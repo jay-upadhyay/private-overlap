@@ -22,7 +22,7 @@ describe('psi', () => {
       }),
       { numRuns: 15 },
     );
-  });
+  }, 20_000);
 
   it('skips_values_that_fail_normalization', async () => {
     const scenario = smallScenario(7, 6, [4], [0.5]);

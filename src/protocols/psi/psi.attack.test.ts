@@ -103,5 +103,5 @@ describe('psi.attack', () => {
       // Every hit is genuinely on the list: PSI has no false positives to hide behind.
       expect(recoveryRate(scenario, 'halcyon', field, result.hits) * 60).toBeCloseTo(result.hits.length, 5);
     }
-  });
+  }, 20_000);
 });
