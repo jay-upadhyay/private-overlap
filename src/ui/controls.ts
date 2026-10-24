@@ -16,6 +16,16 @@ export const CONTROLS = {
   'run-attack': 'Run attack',
 } as const;
 
-export type ControlId = keyof typeof CONTROLS;
+/** Panels only some stages render; a step may point at them only on those stages. */
+export const STAGE_CONTROLS = {
+  'epsilon-panel': 'Privacy vs accuracy',
+  'budget-panel': 'Privacy budget',
+} as const;
 
-export const CONTROL_IDS = Object.keys(CONTROLS) as ControlId[];
+export type ControlId = keyof typeof CONTROLS | keyof typeof STAGE_CONTROLS;
+
+/** Controls every stage page renders. */
+export const CONTROL_IDS = Object.keys(CONTROLS) as (keyof typeof CONTROLS)[];
+
+/** Display name of any control a step can point at. */
+export const CONTROL_LABELS: Readonly<Record<ControlId, string>> = { ...CONTROLS, ...STAGE_CONTROLS };

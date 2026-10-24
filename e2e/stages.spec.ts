@@ -47,7 +47,7 @@ test.describe('dp-risk', () => {
 
   test('full_size_run_is_refused', async ({ page }) => {
     await page.goto('./#/stage/dp-risk');
-    await page.getByTestId('size-picker').selectOption('full');
+    await page.getByTestId('size-input').fill('10000');
     await expect(page.getByTestId('budget-next')).toHaveAttribute('data-ok', 'false');
     await runAndWait(page, 'error');
     await expect(page.getByTestId('run-status')).toContainText('Refused by the privacy budget');
@@ -59,5 +59,25 @@ test.describe('dp-risk', () => {
     for (let i = 0; i < 3; i++) await runAndWait(page, 'done');
     await runAndWait(page, 'error');
     await expect(page.getByTestId('run-status')).toContainText('lifetime cap');
+  });
+
+  test('epsilon_slider_sets_cost_and_marks_the_chart', async ({ page }) => {
+    await page.goto('./#/stage/dp-risk');
+    await expect(page.getByTestId('run-estimate')).toContainText('Costs ε 500 of the ε 2000 left');
+    await page.getByTestId('epsilon-slider').fill('1');
+    await expect(page.getByTestId('epsilon-value')).toHaveText('1.0');
+    await expect(page.getByTestId('run-estimate')).toContainText('Costs ε 1000 of the ε 2000 left');
+    await runAndWait(page, 'done');
+    await expect(page.getByTestId('budget-remaining')).toHaveText('1000');
+    await expect(page.getByTestId('run-dot')).toHaveCount(1);
+  });
+
+  test('chart_has_hover_tooltip_and_table', async ({ page }) => {
+    await page.goto('./#/stage/dp-risk');
+    const chart = page.getByTestId('accuracy-chart');
+    await chart.hover({ position: { x: 150, y: 80 } });
+    await expect(page.getByTestId('chart-tooltip')).toContainText('Tiers right');
+    await page.getByText('Show as a table').click();
+    await expect(page.getByTestId('epsilon-table')).toContainText('0.5');
   });
 });

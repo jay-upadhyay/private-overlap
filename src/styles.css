@@ -10,6 +10,10 @@
   --ok: #1f7a3f;
   --bad: #b3261e;
   --warn: #8a5a00;
+  /* Chart series, validated for colorblind separation and 3:1 contrast on each surface. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --grid: #ecebe7;
   font-family:
     system-ui,
     -apple-system,
@@ -32,6 +36,9 @@
     --ok: #6fcf8f;
     --bad: #f28b82;
     --warn: #e6b450;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --grid: #2c2b28;
   }
 }
 
@@ -598,4 +605,54 @@ input[type='number'] {
 
 .tier-review {
   font-style: italic;
+}
+
+.epsilon-panel .epsilon-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.epsilon-panel input[type='range'] {
+  flex: 1 1 200px;
+  max-width: 360px;
+}
+
+.accuracy-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-top: 8px;
+  touch-action: none;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.chart-legend .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.chart-legend .swatch.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.run-estimate {
+  margin: 4px 0 0;
+  color: var(--muted);
 }

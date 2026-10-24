@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchField } from '../data/normalize';
-import { buildPreset, getPreset, type PresetId, type PresetSize } from '../data/presets';
+import { buildPreset, customerRange, getPreset, type PresetId } from '../data/presets';
+import { DEFAULT_SCORE_EPSILON } from '../dp';
+import { tierMatchRate } from './results';
 import type { Progress, WireEntry } from '../protocol/types';
 import type { AttackOutcome, StageDefinition } from '../stages';
 import type { CompletedRun } from './ResultsPanel';
@@ -40,7 +42,14 @@ export function useStageRun(stage: StageDefinition) {
   const [presetId, setPresetIdState] = useState<PresetId>(stage.defaultPreset);
   const [field, setFieldState] = useState<MatchField>('email');
   const [seed, setSeedState] = useState(() => String(getPreset(stage.defaultPreset).config.seed));
-  const [size, setSizeState] = useState<PresetSize>(stage.defaultSize);
+  const defaultCustomers = (id: PresetId) => {
+    const { min, max } = customerRange(id);
+    return String(Math.max(min, Math.round(max * stage.defaultFraction)));
+  };
+  const [customers, setCustomersState] = useState(() => defaultCustomers(stage.defaultPreset));
+  const [epsilon, setEpsilon] = useState(DEFAULT_SCORE_EPSILON);
+  /** Stage 4: tier accuracy of each completed run, at the ε it used. */
+  const [runHistory, setRunHistory] = useState<{ epsilon: number; accuracy: number }[]>([]);
   const [godView, setGodView] = useState(false);
 
   const [status, setStatus] = useState<RunStatus>('idle');
@@ -59,7 +68,16 @@ export function useStageRun(stage: StageDefinition) {
 
   const parsedSeed = Number.parseInt(seed, 10);
   const effectiveSeed = Number.isFinite(parsedSeed) && parsedSeed >= 0 ? parsedSeed : undefined;
-  const scenario = useMemo(() => buildPreset(presetId, effectiveSeed, size), [presetId, effectiveSeed, size]);
+  const range = customerRange(presetId);
+  const parsedCustomers = Number.parseInt(customers, 10);
+  // Out-of-range or half-typed values clamp to the nearest allowed size.
+  const effectiveCustomers = Number.isFinite(parsedCustomers)
+    ? Math.min(range.max, Math.max(range.min, parsedCustomers))
+    : range.max;
+  const scenario = useMemo(
+    () => buildPreset(presetId, effectiveSeed, effectiveCustomers),
+    [presetId, effectiveSeed, effectiveCustomers],
+  );
 
   // Results and attacks describe one scenario; changing it clears them.
   const reset = () => {
@@ -79,6 +97,8 @@ export function useStageRun(stage: StageDefinition) {
     reset();
     setPresetIdState(id);
     setSeedState(String(getPreset(id).config.seed));
+    setCustomersState(defaultCustomers(id));
+    setRunHistory([]);
   };
   const setField = (f: MatchField) => {
     reset();
@@ -88,9 +108,9 @@ export function useStageRun(stage: StageDefinition) {
     reset();
     setSeedState(s);
   };
-  const setSize = (s: PresetSize) => {
+  const setCustomers = (c: string) => {
     reset();
-    setSizeState(s);
+    setCustomersState(c);
   };
 
   const run = useCallback(async () => {
@@ -115,12 +135,17 @@ export function useStageRun(stage: StageDefinition) {
       const querier = await stage.runProtocol({
         scenario,
         field,
+        epsilon,
         signal: controller.signal,
         onMessage: (entry) => live() && setWire((w) => [...w, entry]),
         onProgress,
       });
       if (!live()) return;
-      setCompleted({ scenario, querier });
+      setCompleted({ scenario, querier, epsilon });
+      if (querier.scores) {
+        const accuracy = tierMatchRate(scenario, querier.scores);
+        setRunHistory((h) => [...h, { epsilon, accuracy }]);
+      }
       setProgress(1);
       setStatus('done');
     } catch (e) {
@@ -128,7 +153,7 @@ export function useStageRun(stage: StageDefinition) {
       setStatus(controller.signal.aborted ? 'cancelled' : 'error');
       setError(message(e));
     }
-  }, [protocolRun, scenario, field, stage]);
+  }, [protocolRun, scenario, field, stage, epsilon]);
 
   const runAttack = useCallback(async () => {
     if (stage.explainer.breaks.kind !== 'attack' || !stage.runAttack) return;
@@ -141,6 +166,7 @@ export function useStageRun(stage: StageDefinition) {
       const outcome = await stage.runAttack({
         scenario,
         field,
+        epsilon,
         signal: controller.signal,
         wire,
         onMessage: (entry) => live() && setWire((w) => [...w, entry]),
@@ -154,7 +180,7 @@ export function useStageRun(stage: StageDefinition) {
       setAttackStatus(controller.signal.aborted ? 'cancelled' : 'error');
       setAttackError(message(e));
     }
-  }, [attackRun, scenario, field, stage, wire]);
+  }, [attackRun, scenario, field, stage, wire, epsilon]);
 
   return {
     presetId,
@@ -163,8 +189,12 @@ export function useStageRun(stage: StageDefinition) {
     setField,
     seed,
     setSeed,
-    size,
-    setSize,
+    customers,
+    setCustomers,
+    customerRange: range,
+    epsilon,
+    setEpsilon,
+    runHistory,
     godView,
     setGodView,
     scenario,

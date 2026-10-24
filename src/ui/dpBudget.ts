@@ -50,19 +50,24 @@ export function customerKeys(scenario: Scenario): string[] {
   return scenario.querier.records.map((r) => `${tag}/${r.rowId}`);
 }
 
-export function checkBudget(scenario: Scenario): SpendDecision {
+/** ε as a decimal string, so the ledger converts it exactly (0.1 is not exact as a float). */
+export const epsilonText = (epsilon: number) => epsilon.toFixed(2).replace(/\.?0+$/, '');
+
+export function checkBudget(scenario: Scenario, epsilon: number): SpendDecision {
   return ledger.canSpend({
     querier: scenario.querier.institution.id,
     period: LEDGER_PERIOD,
     subjects: customerKeys(scenario),
+    epsilon: epsilonText(epsilon),
   });
 }
 
-export function chargeBudget(scenario: Scenario): SpendDecision {
+export function chargeBudget(scenario: Scenario, epsilon: number): SpendDecision {
   const decision = ledger.spend({
     querier: scenario.querier.institution.id,
     period: LEDGER_PERIOD,
     subjects: customerKeys(scenario),
+    epsilon: epsilonText(epsilon),
   });
   changed();
   return decision;

@@ -7,7 +7,7 @@ import { dpRiskParties } from '../protocols/dprisk';
 import { twoPartyParties } from '../protocols/psi';
 import { runInWorkers, type ProtocolId } from '../runtime';
 import type { StageRunContext } from '../stages';
-import { chargeBudget, checkBudget, pageLedger } from './dpBudget';
+import { chargeBudget, checkBudget, epsilonText } from './dpBudget';
 
 async function runScreening(
   protocolId: ProtocolId,
@@ -39,15 +39,15 @@ export const runTwoPartyPsi = (ctx: StageRunContext): Promise<QuerierResult> =>
  * is charged only when the scores are released.
  */
 export async function runDpRisk(ctx: StageRunContext): Promise<QuerierResult> {
-  const decision = checkBudget(ctx.scenario);
+  const decision = checkBudget(ctx.scenario, ctx.epsilon);
   if (!decision.ok) throw new Error(`Refused by the privacy budget: ${decision.message}.`);
   const { results } = await runInWorkers(
     'dp-risk',
-    dpRiskParties(ctx.scenario, ctx.field, pageLedger().scoreEpsilon),
+    dpRiskParties(ctx.scenario, ctx.field, epsilonText(ctx.epsilon)),
     { signal: ctx.signal, onMessage: ctx.onMessage, onProgress: ctx.onProgress },
   );
   const querier = results[ctx.scenario.querier.institution.id];
   if (querier?.kind !== 'querier') throw new Error('querier produced no result');
-  chargeBudget(ctx.scenario);
+  chargeBudget(ctx.scenario, ctx.epsilon);
   return querier;
 }

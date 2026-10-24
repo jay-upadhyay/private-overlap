@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { CONTROLS } from './controls';
+import { CONTROL_LABELS } from './controls';
 import type { Explainer as ExplainerContent } from './explainers/types';
 import { revealControl } from './format';
 import { readStored, writeStored } from './storage';
@@ -51,9 +51,9 @@ export function Explainer({ stageId, explainer, onRunAttack, attackBusy = false 
                   className="control-link"
                   data-step-target={step.target}
                   onClick={() => revealControl(step.target)}
-                  aria-label={`Show ${CONTROLS[step.target]}`}
+                  aria-label={`Show ${CONTROL_LABELS[step.target]}`}
                 >
-                  {CONTROLS[step.target]}
+                  {CONTROL_LABELS[step.target]}
                 </button>
               </li>
             ))}

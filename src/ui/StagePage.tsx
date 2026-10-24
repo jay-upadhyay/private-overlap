@@ -1,6 +1,8 @@
 import type { StageDefinition } from '../stages';
 import { AttackerPanel } from './AttackerPanel';
 import { BudgetPanel } from './BudgetPanel';
+import { EpsilonPanel } from './EpsilonPanel';
+import { runEstimate } from './estimate';
 import { Explainer } from './Explainer';
 import { PartyCard } from './PartyCard';
 import { ResultsPanel } from './ResultsPanel';
@@ -38,8 +40,10 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
         onFieldChange={s.setField}
         seed={s.seed}
         onSeedChange={s.setSeed}
-        size={s.size}
-        onSizeChange={s.setSize}
+        customers={s.customers}
+        customerRange={s.customerRange}
+        onCustomersChange={s.setCustomers}
+        estimate={runEstimate(stage.id, scenario, s.epsilon)}
         sizeNote={`${scenario.querier.records.length.toLocaleString()} customers; banlists of ${scenario.holders
           .map((h) => h.records.length.toLocaleString())
           .join(', ')}.`}
@@ -51,7 +55,18 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
         onCancel={s.cancel}
       />
 
-      {stage.id === 'dp-risk' && <BudgetPanel scenario={scenario} />}
+      {stage.id === 'dp-risk' && (
+        <>
+          <EpsilonPanel
+            scenario={scenario}
+            epsilon={s.epsilon}
+            onEpsilonChange={s.setEpsilon}
+            disabled={s.status === 'running'}
+            runs={s.runHistory}
+          />
+          <BudgetPanel scenario={scenario} epsilon={s.epsilon} />
+        </>
+      )}
 
       <section className="parties" data-testid="party-cards" aria-labelledby="parties-heading">
         <header className="panel-header">

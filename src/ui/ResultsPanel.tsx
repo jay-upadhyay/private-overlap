@@ -9,6 +9,8 @@ export const RESULT_ROWS = 25;
 export interface CompletedRun {
   scenario: Scenario;
   querier: QuerierResult;
+  /** ε per score the run used (stage 4 only). */
+  epsilon?: number;
 }
 
 const VERDICT_TEXT: Record<CellVerdict, string> = { correct: '✓', missed: 'missed', extra: 'extra' };

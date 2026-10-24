@@ -1,4 +1,5 @@
 import type { Scenario } from '../data/scenario';
+import { tierOf } from '../dp/bounds';
 import { expectedQuerierResult, type QuerierResult } from '../protocol/screening';
 import type { PartyId } from '../protocol/types';
 
@@ -42,4 +43,17 @@ export function compareResults(scenario: Scenario, flaggedBy: QuerierResult['fla
     rows.push({ rowId, cells });
   }
   return { holders, rows, ...totals };
+}
+
+/** Stage 4: share of scored customers whose released tier equals the tier of their exact count. */
+export function tierMatchRate(scenario: Scenario, scores: NonNullable<QuerierResult['scores']>): number {
+  let scored = 0;
+  let matching = 0;
+  for (const { rowId } of scenario.querier.records) {
+    const score = scores[rowId];
+    if (!score) continue;
+    scored++;
+    if (score.tier === tierOf(scenario.truth.flaggedBy[rowId]?.length ?? 0)) matching++;
+  }
+  return scored === 0 ? 0 : matching / scored;
 }

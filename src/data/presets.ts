@@ -57,25 +57,37 @@ export function getPreset(id: PresetId): Preset {
   return preset;
 }
 
+/** Smallest custom size offered (or the preset's own size, if smaller). */
+export const MIN_CUSTOMERS = 100;
+
+/** The customer counts a preset can be scaled to: [min, the preset's own size]. */
+export function customerRange(id: PresetId): { min: number; max: number } {
+  const max = getPreset(id).config.querier.customers;
+  return { min: Math.min(MIN_CUSTOMERS, max), max };
+}
+
 /**
- * 'full' is the preset as written. 'small' divides customers and banlists by 10 and keeps every
- * overlap fraction, so the story is the same at a size elliptic-curve PSI runs in seconds.
+ * The preset scaled to `customers`, with every banlist scaled by the same factor, so overlap
+ * fractions (and the story) stay the same at a size elliptic-curve PSI runs in seconds.
  */
-export type PresetSize = 'full' | 'small';
-
-export const SIZE_DIVISOR: Readonly<Record<PresetSize, number>> = { full: 1, small: 10 };
-
-export function scaledConfig(config: ScenarioConfig, size: PresetSize): ScenarioConfig {
-  const d = SIZE_DIVISOR[size];
-  if (d === 1) return config;
+export function scaledConfig(config: ScenarioConfig, customers: number): ScenarioConfig {
+  const full = config.querier.customers;
+  if (customers === full) return config;
+  if (!Number.isInteger(customers) || customers < 1) throw new RangeError(`bad customer count ${customers}`);
+  const factor = customers / full;
   return {
     ...config,
-    querier: { ...config.querier, customers: Math.max(1, Math.round(config.querier.customers / d)) },
-    holders: config.holders.map((h) => ({ ...h, banlistSize: Math.max(1, Math.round(h.banlistSize / d)) })),
+    querier: { ...config.querier, customers },
+    holders: config.holders.map((h) => ({
+      ...h,
+      banlistSize: Math.max(1, Math.round(h.banlistSize * factor)),
+    })),
   };
 }
 
-export function buildPreset(id: PresetId, seed?: number, size: PresetSize = 'full'): Scenario {
-  const config = scaledConfig(getPreset(id).config, size);
+/** `customers` defaults to the preset's own size. */
+export function buildPreset(id: PresetId, seed?: number, customers?: number): Scenario {
+  const base = getPreset(id).config;
+  const config = scaledConfig(base, customers ?? base.querier.customers);
   return buildScenario(seed === undefined ? config : { ...config, seed });
 }

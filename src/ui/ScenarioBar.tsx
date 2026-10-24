@@ -1,5 +1,5 @@
 import { MATCH_FIELDS, type MatchField } from '../data/normalize';
-import { getPreset, PRESETS, type PresetId, type PresetSize } from '../data/presets';
+import { getPreset, PRESETS, type PresetId } from '../data/presets';
 import { formatPercent } from './format';
 import type { RunStatus } from './useStageRun';
 
@@ -10,10 +10,14 @@ interface ScenarioBarProps {
   onFieldChange(field: MatchField): void;
   seed: string;
   onSeedChange(seed: string): void;
-  size: PresetSize;
-  onSizeChange(size: PresetSize): void;
+  /** Customer count as typed; out-of-range values clamp when the scenario is built. */
+  customers: string;
+  customerRange: { min: number; max: number };
+  onCustomersChange(customers: string): void;
   /** Actual counts at the chosen size. */
   sizeNote: string;
+  /** "Estimated run time …", and on stage 4 the ε cost. */
+  estimate: string;
   status: RunStatus;
   progress: number;
   progressLabel: string;
@@ -78,17 +82,19 @@ export function ScenarioBar(props: ScenarioBarProps) {
             onChange={(e) => props.onSeedChange(e.target.value)}
           />
         </label>
-        <label className="field">
-          <span>Size</span>
-          <select
-            data-testid="size-picker"
-            value={props.size}
-            disabled={running}
-            onChange={(e) => props.onSizeChange(e.target.value as PresetSize)}
-          >
-            <option value="small">Small (÷10)</option>
-            <option value="full">Full</option>
-          </select>
+        <label className="field field-customers">
+          <span>Customers</span>
+          <input
+            data-testid="size-input"
+            type="number"
+            inputMode="numeric"
+            min={props.customerRange.min}
+            max={props.customerRange.max}
+            step={100}
+            value={props.customers}
+            disabled={running || props.customerRange.min === props.customerRange.max}
+            onChange={(e) => props.onCustomersChange(e.target.value)}
+          />
         </label>
         <div className="scenario-actions">
           <button
@@ -112,9 +118,10 @@ export function ScenarioBar(props: ScenarioBarProps) {
         </div>
       </div>
       <p className="preset-description">
-        {getPreset(props.presetId).description}
-        {props.size === 'small' && ' Running at a tenth of that size.'}{' '}
-        <span data-testid="size-note">{props.sizeNote}</span>
+        {getPreset(props.presetId).description} <span data-testid="size-note">{props.sizeNote}</span>
+      </p>
+      <p className="run-estimate small" data-testid="run-estimate">
+        {props.estimate}
       </p>
       <div className="run-status">
         <progress data-testid="run-progress" aria-label="Run progress" max={1} value={progress} />

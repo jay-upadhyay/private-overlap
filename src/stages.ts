@@ -1,6 +1,6 @@
 import type { RecoveryScore } from './attacks/score';
 import type { MatchField } from './data/normalize';
-import type { PresetId, PresetSize } from './data/presets';
+import type { PresetId } from './data/presets';
 import type { Scenario } from './data/scenario';
 import type { QuerierResult } from './protocol/screening';
 import type { Progress, WireEntry } from './protocol/types';
@@ -18,6 +18,8 @@ export type StageId = 'plaintext' | 'hashing' | 'psi' | 'multi-psi' | 'dp-risk';
 export interface StageRunContext {
   scenario: Scenario;
   field: MatchField;
+  /** ε per released score, from the stage 4 slider. Other stages ignore it. */
+  epsilon: number;
   /** Aborted when the user presses Cancel or leaves the page. */
   signal: AbortSignal;
   /** Appends a line to the wire inspector. */
@@ -48,8 +50,11 @@ export interface StageDefinition {
   explainer: Explainer;
   /** Preset selected when the page opens. */
   defaultPreset: PresetId;
-  /** Size selected when the page opens. PSI stages start small: each point costs about 1 ms. */
-  defaultSize: PresetSize;
+  /**
+   * Share of the preset's customers selected when the page opens. PSI stages start at a tenth:
+   * each elliptic-curve point costs about 1 ms.
+   */
+  defaultFraction: number;
   /** Runs the stage's protocol. */
   runProtocol?: (ctx: StageRunContext) => Promise<QuerierResult>;
   /**
@@ -70,7 +75,7 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Institutions share raw lists. The baseline with no privacy.',
     explainer: plaintext,
     defaultPreset: 'portfolio',
-    defaultSize: 'full',
+    defaultFraction: 1,
     runProtocol: runAgainstAllHolders('plaintext'),
     eavesdropperSees: () => 'Every identifier in the message, readable as is.',
   },
@@ -81,7 +86,7 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Share hashed identifiers. Broken by dictionary attacks.',
     explainer: hashing,
     defaultPreset: 'portfolio',
-    defaultSize: 'full',
+    defaultFraction: 1,
     runProtocol: runAgainstAllHolders('hashing'),
   },
   {
@@ -91,7 +96,7 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Blinded elliptic-curve matching. Broken by fishing.',
     explainer: psi,
     defaultPreset: 'portfolio',
-    defaultSize: 'small',
+    defaultFraction: 0.1,
     runProtocol: runTwoPartyPsi,
   },
   {
@@ -101,7 +106,7 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Screen against several banlists. Leaks who flagged whom.',
     explainer: multiPsi,
     defaultPreset: 'consortium',
-    defaultSize: 'small',
+    defaultFraction: 0.1,
     runProtocol: runAgainstAllHolders('psi-mp'),
   },
   {
@@ -111,7 +116,7 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Noisy risk tiers with query budgets.',
     explainer: dpRisk,
     defaultPreset: 'consortium',
-    defaultSize: 'small',
+    defaultFraction: 0.1,
     runProtocol: runDpRisk,
   },
 ];

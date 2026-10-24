@@ -22,12 +22,22 @@ describe('StagePage', () => {
     expect(screen.queryByRole('button', { name: 'Run attack' })).toBeNull();
   });
 
-  it('size_picker_scales_the_scenario', async () => {
+  it('custom_size_scales_the_scenario', async () => {
     render(<StagePage stage={psiStage} />);
-    await userEvent.selectOptions(screen.getByTestId('size-picker'), 'full');
-    expect(screen.getByTestId('size-note')).toHaveTextContent('10,000 customers; banlists of 2,000.');
-    await userEvent.selectOptions(screen.getByTestId('size-picker'), 'small');
+    const input = screen.getByTestId('size-input');
     expect(screen.getByTestId('size-note')).toHaveTextContent('1,000 customers; banlists of 200.');
+    await userEvent.clear(input);
+    await userEvent.type(input, '2500');
+    expect(screen.getByTestId('size-note')).toHaveTextContent('2,500 customers; banlists of 500.');
+    expect(screen.getByTestId('run-estimate')).toHaveTextContent('Estimated run time: about');
+  });
+
+  it('out_of_range_size_clamps', async () => {
+    render(<StagePage stage={psiStage} />);
+    const input = screen.getByTestId('size-input');
+    await userEvent.clear(input);
+    await userEvent.type(input, '99999');
+    expect(screen.getByTestId('size-note')).toHaveTextContent('10,000 customers');
   });
 
   it('uses_stage_hooks_when_set', async () => {
