@@ -98,3 +98,27 @@ body {
   font-size: 0.85rem;
   color: var(--muted);
 }
+
+.debug-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.debug-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+  display: block;
+  overflow-x: auto;
+}
+
+.debug-table th,
+.debug-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}

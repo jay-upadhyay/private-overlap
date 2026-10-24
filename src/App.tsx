@@ -1,10 +1,11 @@
+import { DataDebugPage } from './debug/DataDebugPage';
 import { formatRoute, useRoute } from './routing';
 import { STAGES } from './stages';
 import { useWorkerHealth } from './workers/useWorkerHealth';
 
 export function App() {
   const route = useRoute();
-  const stage = STAGES.find((s) => s.id === route.stage) ?? STAGES[0]!;
+  const stage = route.kind === 'stage' ? (STAGES.find((s) => s.id === route.stage) ?? STAGES[0]!) : null;
   const workers = useWorkerHealth();
 
   return (
@@ -22,7 +23,7 @@ export function App() {
             <li key={s.id}>
               <a
                 href={formatRoute({ kind: 'stage', stage: s.id })}
-                aria-current={s.id === stage.id ? 'page' : undefined}
+                aria-current={s.id === stage?.id ? 'page' : undefined}
               >
                 <span className="stage-number">{s.number}</span> {s.title}
               </a>
@@ -31,13 +32,17 @@ export function App() {
         </ol>
       </nav>
 
-      <main className="stage-page" data-testid={`stage-${stage.id}`}>
-        <h2>
-          Stage {stage.number}: {stage.title}
-        </h2>
-        <p>{stage.summary}</p>
-        <p className="placeholder">This stage is not built yet.</p>
-      </main>
+      {stage ? (
+        <main className="stage-page" data-testid={`stage-${stage.id}`}>
+          <h2>
+            Stage {stage.number}: {stage.title}
+          </h2>
+          <p>{stage.summary}</p>
+          <p className="placeholder">This stage is not built yet.</p>
+        </main>
+      ) : (
+        <DataDebugPage />
+      )}
 
       <footer className="app-footer">
         <span data-testid="worker-health">Workers: {workers}</span>
