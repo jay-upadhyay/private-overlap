@@ -17,6 +17,8 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && npm run e2e"
   },
   "dependencies": {
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
