@@ -1,5 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { bytesToHex as toHex, hexToBytes as fromHex, utf8ToBytes } from './bytes';
 import {
   GROUP_ORDER,
   PSI_DST,
@@ -7,12 +8,10 @@ import {
   deriveElement,
   encodePoint,
   expandMessageXmd,
-  fromHex,
   hashToGroup,
   multiply,
   packPoints,
   randomScalar,
-  toHex,
   unpackPoints,
 } from './ristretto';
 
@@ -74,14 +73,14 @@ describe('ristretto', () => {
     for (const input of SAME_ELEMENT_INPUTS) {
       expect(toHex(encodePoint(deriveElement(fromHex(input))))).toBe(SAME_ELEMENT_OUTPUT);
     }
-    const encoder = new TextEncoder();
+
     for (const [msg, uniform] of XMD_VECTORS) {
-      expect(toHex(expandMessageXmd(encoder.encode(msg), XMD_DST, 32))).toBe(uniform);
+      expect(toHex(expandMessageXmd(utf8ToBytes(msg), XMD_DST, 32))).toBe(uniform);
     }
     // hashToGroup is exactly the composition of the two tested steps.
     const value = 'alice@example.com';
     expect(encodePoint(hashToGroup(value))).toEqual(
-      encodePoint(deriveElement(expandMessageXmd(encoder.encode(value), PSI_DST, 64))),
+      encodePoint(deriveElement(expandMessageXmd(utf8ToBytes(value), PSI_DST, 64))),
     );
   });
 

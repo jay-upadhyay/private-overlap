@@ -1,23 +1,48 @@
-// Randomness for protocol secrets and orderings. Always the platform CSPRNG, never the
-// seeded data RNG in src/data/rng.ts.
+// Secret randomness for every stage: PSI scalars, shuffles, DP noise.
+// Shipped code always uses the OS CSPRNG. Tests may pass a seeded source
+// (see src/test/fixtures.ts) so statistical tests are reproducible.
 
-/** Uniform integer in [0, max) without modulo bias. */
-export function secureInt(max: number): number {
-  if (!Number.isInteger(max) || max < 1 || max > 2 ** 32) throw new Error(`bad bound ${max}`);
+export interface RandomSource {
+  fill(bytes: Uint8Array): void;
+}
+
+const MAX_GET_RANDOM_VALUES = 65536;
+
+export const secureSource: RandomSource = {
+  fill(bytes) {
+    for (let i = 0; i < bytes.length; i += MAX_GET_RANDOM_VALUES) {
+      crypto.getRandomValues(bytes.subarray(i, i + MAX_GET_RANDOM_VALUES) as Uint8Array<ArrayBuffer>);
+    }
+  },
+};
+
+export function randomBytes(length: number, source: RandomSource = secureSource): Uint8Array {
+  const bytes = new Uint8Array(length);
+  source.fill(bytes);
+  return bytes;
+}
+
+/** Uniform 32-bit unsigned integer. */
+export function randomUint32(source: RandomSource = secureSource): number {
+  const b = randomBytes(4, source);
+  return (b[0]! | (b[1]! << 8) | (b[2]! << 16) | (b[3]! << 24)) >>> 0;
+}
+
+/** Uniform integer in [0, max), without modulo bias. max must be in [1, 2^32]. */
+export function uniformInt(max: number, source: RandomSource = secureSource): number {
+  if (!Number.isInteger(max) || max < 1 || max > 2 ** 32) throw new RangeError(`bad max ${max}`);
   const limit = 2 ** 32 - (2 ** 32 % max);
-  const word = new Uint32Array(1);
   for (;;) {
-    crypto.getRandomValues(word);
-    if (word[0]! < limit) return word[0]! % max;
+    const x = randomUint32(source);
+    if (x < limit) return x % max;
   }
 }
 
-/** A uniformly random permutation of 0..n-1 (Fisher–Yates). */
-export function securePermutation(n: number): number[] {
-  const order = Array.from({ length: n }, (_, i) => i);
-  for (let i = n - 1; i > 0; i--) {
-    const j = secureInt(i + 1);
-    [order[i], order[j]] = [order[j]!, order[i]!];
+/** In-place Fisher-Yates shuffle with secret randomness. */
+export function secureShuffle<T>(items: T[], source: RandomSource = secureSource): T[] {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = uniformInt(i + 1, source);
+    [items[i], items[j]] = [items[j]!, items[i]!];
   }
-  return order;
+  return items;
 }

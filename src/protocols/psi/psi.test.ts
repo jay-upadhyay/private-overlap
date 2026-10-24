@@ -1,80 +1,85 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { truthMatches } from '../../data/scenario';
+import { bytesToHex, unpackFixed } from '../../crypto/bytes';
+import { POINT_BYTES } from '../../crypto/ristretto';
 import { runInMemory } from '../../protocol/run';
-import { splitPoints, toHex } from '../../crypto';
-import { twoPartyParties } from './parties';
+import { expectedQuerierResult, screeningParties } from '../../protocol/screening';
+import { smallScenario } from '../../test/fixtures';
+import { PSI_MESSAGES } from './session';
 import { capturedBytes, tapProtocol } from './tap';
-import { orderedRows, smallScenario, twoPartyCaseArb } from './testScenarios';
-import { PSI_MESSAGES, twoPartyPsi, type PsiHolderOutput, type PsiQuerierOutput } from './twoParty';
+import { screeningCaseArb } from './testScenarios';
+import { twoPartyPsi } from './twoParty';
+
+const chunks = (bytes: Uint8Array) => unpackFixed(bytes, POINT_BYTES).map(bytesToHex);
 
 describe('psi', () => {
   it('result_equals_ground_truth', async () => {
     await fc.assert(
-      fc.asyncProperty(twoPartyCaseArb, async ({ scenario, field }) => {
-        const parties = twoPartyParties(scenario, field);
-        const { results } = await runInMemory(twoPartyPsi, parties);
-        const querier = results[parties[0]!.id] as PsiQuerierOutput;
-        const holderId = parties[1]!.id;
-        expect(querier.matches).toEqual(orderedRows(scenario, truthMatches(scenario, holderId)));
-        expect(querier.skipped).toEqual([]);
-        expect(querier.holderSetSize).toBe(scenario.holders[0]!.records.length);
+      fc.asyncProperty(screeningCaseArb(1, 30), async ({ scenario, field }) => {
+        const { results } = await runInMemory(twoPartyPsi, screeningParties(scenario, field));
+        expect(results.q).toEqual({
+          kind: 'querier',
+          flaggedBy: expectedQuerierResult(scenario),
+          skipped: [],
+        });
+        expect(results.h1).toMatchObject({ kind: 'holder', skipped: [] });
       }),
       { numRuns: 15 },
     );
   }, 20_000);
 
   it('skips_values_that_fail_normalization', async () => {
-    const scenario = smallScenario(7, 6, [4], [0.5]);
-    const bad = { ...scenario.querier.records[0]!, rowId: 'bad-1', email: 'not an email' };
-    scenario.querier.records.push(bad);
+    const scenario = smallScenario({ seed: 7, customers: 6, banlistSize: 4, flaggedByCount: [0.5] });
+    scenario.querier.records.push({ ...scenario.querier.records[0]!, rowId: 'bad-q', email: 'not an email' });
     scenario.holders[0]!.records.push({ ...scenario.holders[0]!.records[0]!, rowId: 'bad-h', email: '@@' });
-    const parties = twoPartyParties(scenario, 'email');
-    const { results } = await runInMemory(twoPartyPsi, parties);
-    const querier = results.northwind as PsiQuerierOutput;
-    const holder = results.halcyon as PsiHolderOutput;
-    expect(querier.skipped).toEqual([{ rowId: 'bad-1', field: 'email', raw: 'not an email' }]);
-    expect(holder.skipped).toEqual([{ rowId: 'bad-h', field: 'email', raw: '@@' }]);
-    expect(querier.matches).toEqual(orderedRows(scenario, truthMatches(scenario, 'halcyon')));
+    const { results } = await runInMemory(twoPartyPsi, screeningParties(scenario, 'email'));
+    expect(results.q).toEqual({
+      kind: 'querier',
+      flaggedBy: expectedQuerierResult(scenario),
+      skipped: ['bad-q'],
+    });
+    expect(results.h1).toEqual({ kind: 'holder', screened: 6, skipped: ['bad-h'] });
+  });
+
+  it('rejects_more_than_one_holder', async () => {
+    const scenario = smallScenario({ customers: 3, holders: 2, banlistSize: 2, flaggedByCount: [0] });
+    await expect(runInMemory(twoPartyPsi, screeningParties(scenario, 'email'))).rejects.toThrow(
+      '1–1 holders',
+    );
   });
 
   it('holder_learns_only_size', async () => {
-    // Two different customer bases of the same size: the holder's view must be the same shape
-    // and its output identical.
-    const a = smallScenario(11, 12, [8], [0.25]);
-    const b = smallScenario(12, 12, [8], [0.5]);
-    b.holders[0] = a.holders[0]!; // same holder, same banlist
+    // Two different customer bases of the same size against the same banlist: the holder's
+    // view must have the same shape and its output must be identical.
+    const a = smallScenario({ seed: 11, customers: 12, banlistSize: 8, flaggedByCount: [0.25] });
+    const b = smallScenario({ seed: 12, customers: 12, banlistSize: 8, flaggedByCount: [0.5] });
+    b.holders[0] = a.holders[0]!;
     const views = [];
     for (const scenario of [a, b]) {
       const { protocol, messages } = tapProtocol(twoPartyPsi);
-      const { results, wire } = await runInMemory(protocol, twoPartyParties(scenario, 'phone'));
-      const toHolder = wire.filter((w) => w.to === 'halcyon');
+      const { results, wire } = await runInMemory(protocol, screeningParties(scenario, 'phone'));
+      const toHolder = wire.filter((w) => w.to === 'h1');
       expect(toHolder.map((w) => [w.type, w.bytes])).toEqual([[PSI_MESSAGES.blinded, 12 * 32]]);
       // The 12 points are opaque and distinct; nothing else rides along.
-      const payload = messages.find((m) => m.to === 'halcyon')!.payload as Uint8Array;
-      expect(new Set(splitPoints(payload).map(toHex)).size).toBe(12);
-      views.push(results.halcyon);
+      expect(new Set(chunks(capturedBytes(messages.filter((m) => m.to === 'h1'))[0]!)).size).toBe(12);
+      views.push(results.h1);
     }
-    expect(views[0]).toEqual({ role: 'holder', receivedCount: 12, skipped: [] });
+    expect(views[0]).toEqual({ kind: 'holder', screened: 12, skipped: [] });
     expect(views[1]).toEqual(views[0]);
   });
 
   it('fresh_scalars_per_run', async () => {
-    const scenario = smallScenario(21, 15, [10], [0.4]);
+    const scenario = smallScenario({ seed: 21, customers: 15, banlistSize: 10, flaggedByCount: [0.4] });
     const runs: { results: unknown; chunks: Set<string> }[] = [];
     for (let i = 0; i < 2; i++) {
       const { protocol, messages } = tapProtocol(twoPartyPsi);
-      const { results } = await runInMemory(protocol, twoPartyParties(scenario, 'email'));
-      runs.push({
-        results,
-        chunks: new Set(capturedBytes(messages).flatMap((b) => splitPoints(b).map(toHex))),
-      });
+      const { results } = await runInMemory(protocol, screeningParties(scenario, 'email'));
+      runs.push({ results, chunks: new Set(capturedBytes(messages).flatMap(chunks)) });
     }
     // Same inputs, same answer...
     expect(runs[1]!.results).toEqual(runs[0]!.results);
     // ...but not one 32-byte value on the wire repeats between runs, so runs cannot be linked.
-    const repeated = [...runs[0]!.chunks].filter((c) => runs[1]!.chunks.has(c));
     expect(runs[0]!.chunks.size).toBeGreaterThan(0);
-    expect(repeated).toEqual([]);
+    expect([...runs[0]!.chunks].filter((c) => runs[1]!.chunks.has(c))).toEqual([]);
   });
 });

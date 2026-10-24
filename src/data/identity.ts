@@ -14,13 +14,34 @@ export interface Person {
 
 const HEX = '0123456789abcdef';
 
-function emailLocal(rng: Rng, first: string, last: string, domain: string): string {
+// Email patterns are exported so attacks enumerate exactly the space the generator draws from.
+
+/** Gmail's canonical form has no dots, so dotted patterns are only used elsewhere. */
+export function emailSeparators(domain: string): readonly string[] {
+  return domain === 'gmail.com' ? [''] : ['.', '', '_'];
+}
+
+export function emailBases(first: string, last: string, sep: string): string[] {
   const f = first.toLowerCase();
   const l = last.toLowerCase();
-  // Gmail's canonical form has no dots, so dotted patterns are only used elsewhere.
-  const sep = domain === 'gmail.com' ? '' : rng.pick(['.', '', '_']);
-  const base = rng.pick([`${f}${sep}${l}`, `${f[0]}${sep}${l}`, `${f}${sep}${l[0]}`, `${l}${sep}${f}`]);
-  const suffix = rng.pick(['', '', String(rng.int(100)), String(1950 + rng.int(56))]);
+  return [`${f}${sep}${l}`, `${f[0]}${sep}${l}`, `${f}${sep}${l[0]}`, `${l}${sep}${f}`];
+}
+
+/** Suffixes: none (half the time), a number below 100, or a birth-year-like 1950-2005. */
+export const EMAIL_NUMBER_SUFFIX_MAX = 100;
+export const EMAIL_YEAR_SUFFIX_RANGE = [1950, 2005] as const;
+
+function emailLocal(rng: Rng, first: string, last: string, domain: string): string {
+  const seps = emailSeparators(domain);
+  const sep = seps.length === 1 ? seps[0]! : rng.pick(seps);
+  const base = rng.pick(emailBases(first, last, sep));
+  const [y0, y1] = EMAIL_YEAR_SUFFIX_RANGE;
+  const suffix = rng.pick([
+    '',
+    '',
+    String(rng.int(EMAIL_NUMBER_SUFFIX_MAX)),
+    String(y0 + rng.int(y1 - y0 + 1)),
+  ]);
   return base + suffix;
 }
 

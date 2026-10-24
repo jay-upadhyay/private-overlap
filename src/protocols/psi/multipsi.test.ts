@@ -1,65 +1,51 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { bytesToHex, unpackFixed } from '../../crypto/bytes';
+import { POINT_BYTES } from '../../crypto/ristretto';
 import { runInMemory } from '../../protocol/run';
-import { splitPoints, toHex } from '../../crypto';
-import { multiPartyPsi, type MultiPsiQuerierOutput } from './multiParty';
-import { multiPartyParties } from './parties';
+import { expectedQuerierResult, screeningParties, type QuerierResult } from '../../protocol/screening';
+import { smallScenario } from '../../test/fixtures';
+import { createMultiPartyPsi, multiPartyPsi } from './multiParty';
+import { PSI_MESSAGES } from './session';
 import { capturedBytes, tapProtocol } from './tap';
-import { fieldArb, smallScenario } from './testScenarios';
-import { PSI_MESSAGES } from './twoParty';
+import { screeningCaseArb } from './testScenarios';
 
-const multiCaseArb = fc
-  .record({
-    seed: fc.integer({ min: 1, max: 1_000_000 }),
-    customers: fc.integer({ min: 1, max: 20 }),
-    holders: fc.integer({ min: 1, max: 4 }),
-    fractions: fc.array(fc.double({ min: 0, max: 0.15, noNaN: true }), { minLength: 4, maxLength: 4 }),
-    extraBanned: fc.array(fc.integer({ min: 0, max: 8 }), { minLength: 4, maxLength: 4 }),
-    field: fieldArb,
-  })
-  .map(({ seed, customers, holders, fractions, extraBanned, field }) => {
-    const flaggedByCount = fractions.slice(0, holders);
-    // Each holder can be assigned at most every flagged customer.
-    const flagged = flaggedByCount.reduce((sum, f) => sum + Math.round(f * customers), 0);
-    const sizes = extraBanned.slice(0, holders).map((extra) => flagged + extra);
-    return { field, scenario: smallScenario(seed, customers, sizes, flaggedByCount) };
-  });
+const chunks = (bytes: Uint8Array) => unpackFixed(bytes, POINT_BYTES).map(bytesToHex);
 
 describe('multipsi', () => {
   it('grid_equals_ground_truth', async () => {
     await fc.assert(
-      fc.asyncProperty(multiCaseArb, async ({ scenario, field }) => {
-        const { results } = await runInMemory(multiPartyPsi, multiPartyParties(scenario, field));
-        const querier = results.northwind as MultiPsiQuerierOutput;
-        expect(querier.grid).toEqual(scenario.truth.flaggedBy);
-        for (const holder of scenario.holders) {
-          expect(results[holder.institution.id]).toEqual({
-            role: 'holder',
-            receivedCount: querier.sentCount,
-            skipped: [],
-          });
-        }
+      fc.asyncProperty(screeningCaseArb(4, 20), async ({ scenario, field }) => {
+        const { results } = await runInMemory(multiPartyPsi, screeningParties(scenario, field));
+        expect((results.q as QuerierResult).flaggedBy).toEqual(expectedQuerierResult(scenario));
+        // Every holder screened the same number of values and learned nothing else.
+        const views = scenario.holders.map((h) => results[h.institution.id]);
+        for (const view of views) expect(view).toEqual(views[0]);
       }),
       { numRuns: 12 },
     );
   }, 20_000);
 
   it('parallel_equals_sequential', async () => {
-    const scenario = smallScenario(51, 20, [12, 14, 10, 16], [0.2, 0.1, 0.05, 0.05]);
-    const parallel = await runInMemory(multiPartyPsi, multiPartyParties(scenario, 'email'));
-    const sequential = await runInMemory(
-      multiPartyPsi,
-      multiPartyParties(scenario, 'email', { mode: 'sequential' }),
-    );
+    const scenario = smallScenario({
+      seed: 51,
+      customers: 20,
+      holders: 4,
+      banlistSize: 16,
+      flaggedByCount: [0.2, 0.1, 0.05, 0.05],
+    });
+    const parties = screeningParties(scenario, 'email');
+    const parallel = await runInMemory(multiPartyPsi, parties);
+    const sequential = await runInMemory(createMultiPartyPsi({ mode: 'sequential' }), parties);
     expect(sequential.results).toEqual(parallel.results);
-    expect((parallel.results.northwind as MultiPsiQuerierOutput).grid).toEqual(scenario.truth.flaggedBy);
+    expect((parallel.results.q as QuerierResult).flaggedBy).toEqual(expectedQuerierResult(scenario));
 
     // Sequential really is one session at a time: holder i answers before holder i+1 is asked.
     const order = sequential.wire.filter((w) => w.type !== PSI_MESSAGES.reblinded).map((w) => [w.type, w.to]);
     expect(order).toEqual(
-      scenario.holders.flatMap((h) => [
-        [PSI_MESSAGES.blinded, h.institution.id],
-        [PSI_MESSAGES.holderSet, 'northwind'],
+      ['h1', 'h2', 'h3', 'h4'].flatMap((h) => [
+        [PSI_MESSAGES.blinded, h],
+        [PSI_MESSAGES.holderSet, 'q'],
       ]),
     );
     // Parallel sends every blinded set before any holder set arrives.
@@ -70,24 +56,26 @@ describe('multipsi', () => {
   });
 
   it('sessions_use_independent_scalars', async () => {
-    const scenario = smallScenario(61, 15, [10, 10, 10, 10], [0.2, 0.1]);
+    const scenario = smallScenario({
+      seed: 61,
+      customers: 15,
+      holders: 4,
+      banlistSize: 10,
+      flaggedByCount: [0.2, 0.1],
+    });
     const { protocol, messages } = tapProtocol(multiPartyPsi);
-    await runInMemory(protocol, multiPartyParties(scenario, 'phone'));
+    await runInMemory(protocol, screeningParties(scenario, 'phone'));
 
     // The same 15 customers went to four holders. With one shared scalar the four batches would be
     // the same 32-byte values (only reordered); with independent scalars no value repeats.
-    const sentPerHolder = scenario.holders.map((h) => {
-      const sent = messages.filter((m) => m.to === h.institution.id);
-      return new Set(capturedBytes(sent).flatMap((b) => splitPoints(b).map(toHex)));
-    });
+    const sentPerHolder = ['h1', 'h2', 'h3', 'h4'].map(
+      (h) => new Set(capturedBytes(messages.filter((m) => m.to === h)).flatMap(chunks)),
+    );
     for (const set of sentPerHolder) expect(set.size).toBe(15);
-    const all = new Set(sentPerHolder.flatMap((s) => [...s]));
-    expect(all.size).toBe(15 * 4);
+    expect(new Set(sentPerHolder.flatMap((s) => [...s])).size).toBe(15 * 4);
 
     // Same for everything the holders sent back.
-    const replies = capturedBytes(messages.filter((m) => m.to === 'northwind')).flatMap((b) =>
-      splitPoints(b),
-    );
-    expect(new Set(replies.map(toHex)).size).toBe(replies.length);
+    const replies = capturedBytes(messages.filter((m) => m.to === 'q')).flatMap(chunks);
+    expect(new Set(replies).size).toBe(replies.length);
   });
 });
