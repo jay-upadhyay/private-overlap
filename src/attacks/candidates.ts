@@ -47,6 +47,24 @@ export function* emailPatternCandidates(options: EmailPatternOptions = {}): Gene
   }
 }
 
+/**
+ * Every North American number under the given prefixes, in canonical E.164 form.
+ * A prefix is 3 digits (area code: 8 million numbers, exchanges 200-999) or 6 digits
+ * (area code + exchange: 10,000 numbers).
+ */
+export function* phoneRangeCandidates(prefixes: readonly string[]): Generator<string> {
+  for (const prefix of prefixes) {
+    if (!/^[2-9]\d{2}(?:[2-9]\d{2})?$/.test(prefix)) throw new RangeError(`bad phone prefix ${prefix}`);
+    const exchanges =
+      prefix.length === 6 ? [prefix.slice(3)] : Array.from({ length: 800 }, (_, i) => String(200 + i));
+    for (const exchange of exchanges) {
+      for (let line = 0; line < 10_000; line++) {
+        yield `+1${prefix.slice(0, 3)}${exchange}${String(line).padStart(4, '0')}`;
+      }
+    }
+  }
+}
+
 export interface BreachCorpusOptions {
   /** Share of `population` the leaked list contains, 0..1. */
   coverage: number;
