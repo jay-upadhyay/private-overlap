@@ -1,6 +1,7 @@
 import { DataDebugPage } from './debug/DataDebugPage';
 import { formatRoute, useRoute } from './routing';
 import { STAGES } from './stages';
+import { StagePage } from './ui/StagePage';
 import { useWorkerHealth } from './workers/useWorkerHealth';
 
 export function App() {
@@ -32,17 +33,7 @@ export function App() {
         </ol>
       </nav>
 
-      {stage ? (
-        <main className="stage-page" data-testid={`stage-${stage.id}`}>
-          <h2>
-            Stage {stage.number}: {stage.title}
-          </h2>
-          <p>{stage.summary}</p>
-          <p className="placeholder">This stage is not built yet.</p>
-        </main>
-      ) : (
-        <DataDebugPage />
-      )}
+      {stage ? <StagePage key={stage.id} stage={stage} /> : <DataDebugPage />}
 
       <footer className="app-footer">
         <span data-testid="worker-health">Workers: {workers}</span>
