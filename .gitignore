@@ -1,0 +1,8 @@
+node_modules
+dist
+playwright-report
+test-results
+.DS_Store
+
+# Session transcripts are exported for submission in P10, after review.
+transcripts/
