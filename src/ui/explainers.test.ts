@@ -31,6 +31,11 @@ describe('explainers', () => {
     ]);
   });
 
+  it('psi_stages_have_live_attack_runners', () => {
+    expect(STAGES.find((s) => s.id === 'psi')?.runAttack).toEqual(expect.any(Function));
+    expect(STAGES.find((s) => s.id === 'multi-psi')?.runAttack).toEqual(expect.any(Function));
+  });
+
   it('steps_reference_real_controls', () => {
     for (const stage of STAGES) {
       const { unmount } = render(createElement(StagePage, { stage }));

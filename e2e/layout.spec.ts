@@ -36,8 +36,9 @@ test('run_fills_wire_and_results', async ({ page }) => {
   await expect(tally).toContainText('Extra0');
   await expect(page.getByRole('columnheader', { name: 'Meridian' })).toBeVisible();
 
-  // The attack demo for this stage is on the backlog.
-  await expect(page.getByTestId('attack-not-built')).toBeVisible();
+  // The attack demo is wired in, so its button replaces the "not built yet" note.
+  await expect(page.getByTestId('run-attack')).toBeVisible();
+  await expect(page.getByTestId('attack-not-built')).toHaveCount(0);
 });
 
 test('mobile_width_has_no_horizontal_scroll', async ({ page }) => {

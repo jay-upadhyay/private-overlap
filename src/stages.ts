@@ -4,6 +4,7 @@ import type { PresetId } from './data/presets';
 import type { Scenario } from './data/scenario';
 import type { QuerierResult } from './protocol/screening';
 import type { Progress, WireEntry } from './protocol/types';
+import { runMultiPsiAttack, runPsiAttack } from './ui/attackRunners';
 import { dpRisk } from './ui/explainers/dp-risk';
 import { hashing } from './ui/explainers/hashing';
 import { multiPsi } from './ui/explainers/multi-psi';
@@ -98,6 +99,7 @@ export const STAGES: readonly StageDefinition[] = [
     defaultPreset: 'portfolio',
     defaultFraction: 0.1,
     runProtocol: runTwoPartyPsi,
+    runAttack: runPsiAttack,
   },
   {
     id: 'multi-psi',
@@ -108,6 +110,7 @@ export const STAGES: readonly StageDefinition[] = [
     defaultPreset: 'consortium',
     defaultFraction: 0.1,
     runProtocol: runAgainstAllHolders('psi-mp'),
+    runAttack: runMultiPsiAttack,
   },
   {
     id: 'dp-risk',
