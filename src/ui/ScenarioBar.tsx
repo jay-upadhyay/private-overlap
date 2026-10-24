@@ -1,5 +1,5 @@
 import { MATCH_FIELDS, type MatchField } from '../data/normalize';
-import { getPreset, PRESETS, type PresetId } from '../data/presets';
+import { getPreset, PRESETS, type PresetId, type PresetSize } from '../data/presets';
 import { formatPercent } from './format';
 import type { RunStatus } from './useStageRun';
 
@@ -10,6 +10,10 @@ interface ScenarioBarProps {
   onFieldChange(field: MatchField): void;
   seed: string;
   onSeedChange(seed: string): void;
+  size: PresetSize;
+  onSizeChange(size: PresetSize): void;
+  /** Actual counts at the chosen size. */
+  sizeNote: string;
   status: RunStatus;
   progress: number;
   progressLabel: string;
@@ -74,6 +78,18 @@ export function ScenarioBar(props: ScenarioBarProps) {
             onChange={(e) => props.onSeedChange(e.target.value)}
           />
         </label>
+        <label className="field">
+          <span>Size</span>
+          <select
+            data-testid="size-picker"
+            value={props.size}
+            disabled={running}
+            onChange={(e) => props.onSizeChange(e.target.value as PresetSize)}
+          >
+            <option value="small">Small (÷10)</option>
+            <option value="full">Full</option>
+          </select>
+        </label>
         <div className="scenario-actions">
           <button
             type="button"
@@ -95,7 +111,11 @@ export function ScenarioBar(props: ScenarioBarProps) {
           </button>
         </div>
       </div>
-      <p className="preset-description">{getPreset(props.presetId).description}</p>
+      <p className="preset-description">
+        {getPreset(props.presetId).description}
+        {props.size === 'small' && ' Running at a tenth of that size.'}{' '}
+        <span data-testid="size-note">{props.sizeNote}</span>
+      </p>
       <div className="run-status">
         <progress data-testid="run-progress" aria-label="Run progress" max={1} value={progress} />
         <span role="status" data-testid="run-status" data-status={status}>

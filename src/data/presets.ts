@@ -57,7 +57,25 @@ export function getPreset(id: PresetId): Preset {
   return preset;
 }
 
-export function buildPreset(id: PresetId, seed?: number): Scenario {
-  const { config } = getPreset(id);
+/**
+ * 'full' is the preset as written. 'small' divides customers and banlists by 10 and keeps every
+ * overlap fraction, so the story is the same at a size elliptic-curve PSI runs in seconds.
+ */
+export type PresetSize = 'full' | 'small';
+
+export const SIZE_DIVISOR: Readonly<Record<PresetSize, number>> = { full: 1, small: 10 };
+
+export function scaledConfig(config: ScenarioConfig, size: PresetSize): ScenarioConfig {
+  const d = SIZE_DIVISOR[size];
+  if (d === 1) return config;
+  return {
+    ...config,
+    querier: { ...config.querier, customers: Math.max(1, Math.round(config.querier.customers / d)) },
+    holders: config.holders.map((h) => ({ ...h, banlistSize: Math.max(1, Math.round(h.banlistSize / d)) })),
+  };
+}
+
+export function buildPreset(id: PresetId, seed?: number, size: PresetSize = 'full'): Scenario {
+  const config = scaledConfig(getPreset(id).config, size);
   return buildScenario(seed === undefined ? config : { ...config, seed });
 }

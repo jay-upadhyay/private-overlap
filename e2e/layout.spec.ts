@@ -27,16 +27,17 @@ test('run_fills_wire_and_results', async ({ page }) => {
   await expect(page.getByTestId('wire-entry')).toHaveCount(0);
   await page.getByTestId('run-button').click();
   await expect(page.getByTestId('run-status')).toHaveAttribute('data-status', 'done');
-  // Consortium preset: one request and one reply per holder.
-  await expect(page.getByTestId('wire-entry')).toHaveCount(8);
+  // Consortium preset, multi-party PSI: blinded customers out, re-blinded customers and the
+  // blinded banlist back, for each of 4 holders.
+  await expect(page.getByTestId('wire-entry')).toHaveCount(12);
   await expect(page.getByTestId('wire-entry').first()).toContainText('Eavesdropper sees:');
   const tally = page.getByTestId('results-tally');
   await expect(tally).toContainText('Missed0');
   await expect(tally).toContainText('Extra0');
   await expect(page.getByRole('columnheader', { name: 'Meridian' })).toBeVisible();
 
-  await page.getByTestId('explainer-run-attack').click();
-  await expect(page.getByTestId('attack-score')).toContainText('Recall');
+  // The attack demo for this stage is on the backlog.
+  await expect(page.getByTestId('attack-not-built')).toBeVisible();
 });
 
 test('mobile_width_has_no_horizontal_scroll', async ({ page }) => {
@@ -46,10 +47,6 @@ test('mobile_width_has_no_horizontal_scroll', async ({ page }) => {
     await page.getByTestId('god-view-toggle').check();
     await page.getByTestId('run-button').click();
     await expect(page.getByTestId('run-status')).toHaveAttribute('data-status', 'done');
-    if (id !== 'dp-risk') {
-      await page.getByTestId('run-attack').click();
-      await expect(page.getByTestId('attack-score')).toBeVisible();
-    }
     expect(await hasHorizontalScroll(page), id).toBe(false);
   }
 });

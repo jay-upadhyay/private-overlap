@@ -8,13 +8,26 @@ import { StagePage } from './StagePage';
 const psiStage = STAGES.find((s) => s.id === 'psi')!;
 
 describe('StagePage', () => {
-  it('fixture_run_fills_wire_and_results', async () => {
-    render(<StagePage stage={psiStage} />);
-    await userEvent.selectOptions(screen.getByTestId('preset-picker'), 'onboarding');
+  it('stage_without_protocol_fails_visibly', async () => {
+    render(<StagePage stage={{ ...psiStage, runProtocol: undefined }} />);
     await userEvent.click(screen.getByTestId('run-button'));
-    await waitFor(() => expect(screen.getByTestId('run-status')).toHaveAttribute('data-status', 'done'));
-    expect(screen.getAllByTestId('wire-entry')).toHaveLength(2);
-    expect(screen.getByTestId('results-tally')).toHaveTextContent('Correct1Missed0Extra0');
+    await waitFor(() => expect(screen.getByTestId('run-status')).toHaveAttribute('data-status', 'error'));
+    expect(screen.getByTestId('run-status')).toHaveTextContent('This stage has no protocol yet.');
+  });
+
+  it('attack_not_built_disables_attack_controls', () => {
+    render(<StagePage stage={{ ...psiStage, runAttack: undefined }} />);
+    expect(screen.getByTestId('attack-not-built')).toBeInTheDocument();
+    expect(screen.queryByTestId('run-attack')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Run attack' })).toBeNull();
+  });
+
+  it('size_picker_scales_the_scenario', async () => {
+    render(<StagePage stage={psiStage} />);
+    await userEvent.selectOptions(screen.getByTestId('size-picker'), 'full');
+    expect(screen.getByTestId('size-note')).toHaveTextContent('10,000 customers; banlists of 2,000.');
+    await userEvent.selectOptions(screen.getByTestId('size-picker'), 'small');
+    expect(screen.getByTestId('size-note')).toHaveTextContent('1,000 customers; banlists of 200.');
   });
 
   it('uses_stage_hooks_when_set', async () => {
@@ -36,7 +49,6 @@ describe('StagePage', () => {
       examples: [`wire had ${ctx.wire.length}`],
     }));
     render(<StagePage stage={{ ...psiStage, runProtocol, runAttack }} />);
-    expect(screen.queryByTestId('fixture-note')).toBeNull();
 
     await userEvent.click(screen.getByTestId('run-button'));
     await waitFor(() => expect(screen.getByTestId('wire-entry')).toHaveTextContent('blinded'));

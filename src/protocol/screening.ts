@@ -1,5 +1,6 @@
 import type { MatchField } from '../data/normalize';
 import type { BanlistRecord, CustomerRecord, Scenario } from '../data/scenario';
+import type { Tier } from '../dp/bounds';
 import type { PartyId, PartySpec, Protocol } from './types';
 
 // Shared inputs and outputs for every screening protocol (stages 0-3), so the UI,
@@ -22,10 +23,18 @@ export interface HolderInput {
 
 export type ScreeningInput = QuerierInput | HolderInput;
 
+/** Stage 4's per-customer output: a noisy count of flagging institutions and its tier. */
+export interface RiskScore {
+  noisy: number;
+  tier: Tier;
+}
+
 export interface QuerierResult {
   kind: 'querier';
-  /** Querier rowId -> holders that flag it. Only flagged rows appear. */
+  /** Querier rowId -> holders that flag it. Only flagged rows appear. Empty in stage 4. */
   flaggedBy: Record<string, PartyId[]>;
+  /** Stage 4 only: querier rowId -> noisy risk score, for every scored customer. */
+  scores?: Record<string, RiskScore>;
   skipped: string[];
 }
 

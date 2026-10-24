@@ -1,5 +1,6 @@
 import type { StageDefinition } from '../stages';
 import { AttackerPanel } from './AttackerPanel';
+import { BudgetPanel } from './BudgetPanel';
 import { Explainer } from './Explainer';
 import { PartyCard } from './PartyCard';
 import { ResultsPanel } from './ResultsPanel';
@@ -26,7 +27,7 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
       <Explainer
         stageId={stage.id}
         explainer={stage.explainer}
-        onRunAttack={s.runAttack}
+        onRunAttack={s.attackAvailable ? s.runAttack : undefined}
         attackBusy={attackBusy}
       />
 
@@ -37,6 +38,11 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
         onFieldChange={s.setField}
         seed={s.seed}
         onSeedChange={s.setSeed}
+        size={s.size}
+        onSizeChange={s.setSize}
+        sizeNote={`${scenario.querier.records.length.toLocaleString()} customers; banlists of ${scenario.holders
+          .map((h) => h.records.length.toLocaleString())
+          .join(', ')}.`}
         status={s.status}
         progress={s.progress}
         progressLabel={s.progressLabel}
@@ -44,12 +50,8 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
         onRun={s.run}
         onCancel={s.cancel}
       />
-      {s.usesFixtures && (
-        <p className="fixture-note small" data-testid="fixture-note">
-          Preview: this page runs a stand-in protocol that sends plaintext. The real one arrives in a later
-          build.
-        </p>
-      )}
+
+      {stage.id === 'dp-risk' && <BudgetPanel scenario={scenario} />}
 
       <section className="parties" data-testid="party-cards" aria-labelledby="parties-heading">
         <header className="panel-header">
@@ -94,6 +96,7 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
           status={s.attackStatus}
           outcome={s.attackOutcome}
           error={s.attackError}
+          available={s.attackAvailable}
           onRunAttack={s.runAttack}
         />
       </div>

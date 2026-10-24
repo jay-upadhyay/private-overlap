@@ -11,10 +11,19 @@ interface AttackerPanelProps {
   status: RunStatus;
   outcome: AttackOutcome | null;
   error: string | null;
+  /** False while this stage's attack demo is not built (see BACKLOG.md). */
+  available: boolean;
   onRunAttack(): void;
 }
 
-export function AttackerPanel({ breaks, status, outcome, error, onRunAttack }: AttackerPanelProps) {
+export function AttackerPanel({
+  breaks,
+  status,
+  outcome,
+  error,
+  available,
+  onRunAttack,
+}: AttackerPanelProps) {
   return (
     <section className="panel attacker-panel" data-testid="attacker-panel" aria-labelledby="attacker-heading">
       <header className="panel-header">
@@ -25,6 +34,15 @@ export function AttackerPanel({ breaks, status, outcome, error, onRunAttack }: A
           Out of scope. This stage stops the attacks from earlier stages; see the explainer for what it does
           not cover.
         </p>
+      ) : !available ? (
+        <>
+          <p>
+            <strong>{breaks.name}.</strong> {breaks.how}
+          </p>
+          <p className="muted small" data-testid="attack-not-built">
+            The live demo of this attack is not built yet.
+          </p>
+        </>
       ) : (
         <>
           <p>

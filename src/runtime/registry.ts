@@ -1,11 +1,18 @@
+import { dpRiskProtocol } from '../protocols/dprisk';
+import { hashingProtocol } from '../protocols/hashing';
 import { plaintextProtocol } from '../protocols/plaintext/plaintext';
+import { multiPartyPsi, twoPartyPsi } from '../protocols/psi';
 import type { PartySpec, Protocol } from '../protocol/types';
 
 // Protocols a party worker can run, by id. Workers receive only the id, so every stage
-// that runs in workers must be listed here. Wave 3 adds hashing, PSI and DP.
+// that runs in workers must be listed here.
 
 export const PROTOCOLS = {
   plaintext: plaintextProtocol,
+  hashing: hashingProtocol(),
+  'psi-2p': twoPartyPsi,
+  'psi-mp': multiPartyPsi,
+  'dp-risk': dpRiskProtocol,
 } satisfies Record<string, Protocol<never, unknown>>;
 
 export type ProtocolRegistry = Readonly<Record<string, Protocol<never, unknown>>>;

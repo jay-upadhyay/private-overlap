@@ -23,3 +23,20 @@ describe('presets', () => {
     );
   });
 });
+
+describe('preset sizes', () => {
+  it.each(PRESETS.map((p) => [p.id, p] as const))('small_keeps_proportions: %s', (_id, preset) => {
+    const full = buildPreset(preset.id);
+    const small = buildPreset(preset.id, undefined, 'small');
+    const n = (s: typeof full) => s.querier.records.length;
+    const flagged = (s: typeof full) => Object.keys(s.truth.flaggedBy).length;
+    expect(n(small)).toBe(Math.max(1, Math.round(n(full) / 10)));
+    small.holders.forEach((h, i) =>
+      expect(h.records.length).toBe(Math.max(1, Math.round(full.holders[i]!.records.length / 10))),
+    );
+    // Same flagged share, up to rounding to whole customers.
+    expect(Math.abs(flagged(small) / n(small) - flagged(full) / n(full))).toBeLessThanOrEqual(
+      preset.config.flaggedByCount.length / n(small),
+    );
+  });
+});

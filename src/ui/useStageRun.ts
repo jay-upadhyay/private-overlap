@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchField } from '../data/normalize';
-import { buildPreset, getPreset, type PresetId } from '../data/presets';
+import { buildPreset, getPreset, type PresetId, type PresetSize } from '../data/presets';
 import type { Progress, WireEntry } from '../protocol/types';
 import type { AttackOutcome, StageDefinition } from '../stages';
-import { fixtureRunAttack, fixtureRunProtocol } from './fixtures/runners';
 import type { CompletedRun } from './ResultsPanel';
 
 export type RunStatus = 'idle' | 'running' | 'done' | 'cancelled' | 'error';
@@ -41,6 +40,7 @@ export function useStageRun(stage: StageDefinition) {
   const [presetId, setPresetIdState] = useState<PresetId>(stage.defaultPreset);
   const [field, setFieldState] = useState<MatchField>('email');
   const [seed, setSeedState] = useState(() => String(getPreset(stage.defaultPreset).config.seed));
+  const [size, setSizeState] = useState<PresetSize>(stage.defaultSize);
   const [godView, setGodView] = useState(false);
 
   const [status, setStatus] = useState<RunStatus>('idle');
@@ -59,7 +59,7 @@ export function useStageRun(stage: StageDefinition) {
 
   const parsedSeed = Number.parseInt(seed, 10);
   const effectiveSeed = Number.isFinite(parsedSeed) && parsedSeed >= 0 ? parsedSeed : undefined;
-  const scenario = useMemo(() => buildPreset(presetId, effectiveSeed), [presetId, effectiveSeed]);
+  const scenario = useMemo(() => buildPreset(presetId, effectiveSeed, size), [presetId, effectiveSeed, size]);
 
   // Results and attacks describe one scenario; changing it clears them.
   const reset = () => {
@@ -88,6 +88,10 @@ export function useStageRun(stage: StageDefinition) {
     reset();
     setSeedState(s);
   };
+  const setSize = (s: PresetSize) => {
+    reset();
+    setSizeState(s);
+  };
 
   const run = useCallback(async () => {
     const controller = protocolRun.start();
@@ -107,7 +111,8 @@ export function useStageRun(stage: StageDefinition) {
       if (p.label) setProgressLabel(p.label);
     };
     try {
-      const querier = await (stage.runProtocol ?? fixtureRunProtocol)({
+      if (!stage.runProtocol) throw new Error('This stage has no protocol yet.');
+      const querier = await stage.runProtocol({
         scenario,
         field,
         signal: controller.signal,
@@ -126,14 +131,14 @@ export function useStageRun(stage: StageDefinition) {
   }, [protocolRun, scenario, field, stage]);
 
   const runAttack = useCallback(async () => {
-    if (stage.explainer.breaks.kind !== 'attack') return;
+    if (stage.explainer.breaks.kind !== 'attack' || !stage.runAttack) return;
     const controller = attackRun.start();
     const live = () => attackRun.isLatest(controller);
     setAttackStatus('running');
     setAttackOutcome(null);
     setAttackError(null);
     try {
-      const outcome = await (stage.runAttack ?? fixtureRunAttack)({
+      const outcome = await stage.runAttack({
         scenario,
         field,
         signal: controller.signal,
@@ -158,6 +163,8 @@ export function useStageRun(stage: StageDefinition) {
     setField,
     seed,
     setSeed,
+    size,
+    setSize,
     godView,
     setGodView,
     scenario,
@@ -173,6 +180,6 @@ export function useStageRun(stage: StageDefinition) {
     attackOutcome,
     attackError,
     runAttack,
-    usesFixtures: !stage.runProtocol,
+    attackAvailable: !!stage.runAttack,
   };
 }

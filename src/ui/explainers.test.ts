@@ -42,7 +42,16 @@ describe('explainers', () => {
   });
 
   it('every_named_control_is_on_the_page', () => {
-    const { unmount } = render(createElement(StagePage, { stage: STAGES[2]! }));
+    // A stub attack, so controls that only appear once an attack exists are rendered too.
+    const stage = {
+      ...STAGES[2]!,
+      runAttack: async () => ({
+        target: 'stub',
+        score: { truePositives: 0, falsePositives: 0, missed: 0, recall: 1, precision: 1 },
+        examples: [],
+      }),
+    };
+    const { unmount } = render(createElement(StagePage, { stage }));
     for (const id of CONTROL_IDS) expect(screen.queryByTestId(id), id).not.toBeNull();
     unmount();
   });

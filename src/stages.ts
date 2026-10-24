@@ -1,6 +1,6 @@
 import type { RecoveryScore } from './attacks/score';
 import type { MatchField } from './data/normalize';
-import type { PresetId } from './data/presets';
+import type { PresetId, PresetSize } from './data/presets';
 import type { Scenario } from './data/scenario';
 import type { QuerierResult } from './protocol/screening';
 import type { Progress, WireEntry } from './protocol/types';
@@ -10,6 +10,7 @@ import { multiPsi } from './ui/explainers/multi-psi';
 import { plaintext } from './ui/explainers/plaintext';
 import { psi } from './ui/explainers/psi';
 import type { Explainer } from './ui/explainers/types';
+import { runAgainstAllHolders, runDpRisk, runTwoPartyPsi } from './ui/runners';
 
 export type StageId = 'plaintext' | 'hashing' | 'psi' | 'multi-psi' | 'dp-risk';
 
@@ -47,9 +48,14 @@ export interface StageDefinition {
   explainer: Explainer;
   /** Preset selected when the page opens. */
   defaultPreset: PresetId;
-  /** Runs the stage's protocol. Until a stage sets this, the page uses a stand-in from src/ui/fixtures. */
+  /** Size selected when the page opens. PSI stages start small: each point costs about 1 ms. */
+  defaultSize: PresetSize;
+  /** Runs the stage's protocol. */
   runProtocol?: (ctx: StageRunContext) => Promise<QuerierResult>;
-  /** Runs the attack named in the explainer. Ignored when the explainer marks the attack out of scope. */
+  /**
+   * Runs the attack named in the explainer. Ignored when the explainer marks the attack out of
+   * scope. Unset means the attack demo is not built yet (see BACKLOG.md).
+   */
   runAttack?: (ctx: AttackRunContext) => Promise<AttackOutcome>;
   /** The "Eavesdropper sees" line for one wire message. Defaults to sender, receiver, size and payload. */
   eavesdropperSees?: (entry: WireEntry) => string;
@@ -64,6 +70,8 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Institutions share raw lists. The baseline with no privacy.',
     explainer: plaintext,
     defaultPreset: 'portfolio',
+    defaultSize: 'full',
+    runProtocol: runAgainstAllHolders('plaintext'),
     eavesdropperSees: () => 'Every identifier in the message, readable as is.',
   },
   {
@@ -73,6 +81,8 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Share hashed identifiers. Broken by dictionary attacks.',
     explainer: hashing,
     defaultPreset: 'portfolio',
+    defaultSize: 'full',
+    runProtocol: runAgainstAllHolders('hashing'),
   },
   {
     id: 'psi',
@@ -81,6 +91,8 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Blinded elliptic-curve matching. Broken by fishing.',
     explainer: psi,
     defaultPreset: 'portfolio',
+    defaultSize: 'small',
+    runProtocol: runTwoPartyPsi,
   },
   {
     id: 'multi-psi',
@@ -89,6 +101,8 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Screen against several banlists. Leaks who flagged whom.',
     explainer: multiPsi,
     defaultPreset: 'consortium',
+    defaultSize: 'small',
+    runProtocol: runAgainstAllHolders('psi-mp'),
   },
   {
     id: 'dp-risk',
@@ -97,6 +111,8 @@ export const STAGES: readonly StageDefinition[] = [
     summary: 'Noisy risk tiers with query budgets.',
     explainer: dpRisk,
     defaultPreset: 'consortium',
+    defaultSize: 'small',
+    runProtocol: runDpRisk,
   },
 ];
 
