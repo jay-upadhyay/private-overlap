@@ -1,5 +1,7 @@
 import type { StageDefinition } from '../stages';
+import { formatRoute } from '../routing';
 import { AttackerPanel } from './AttackerPanel';
+import { StageFooter, WalkthroughBanner } from './StageNav';
 import { BudgetPanel } from './BudgetPanel';
 import { EpsilonPanel } from './EpsilonPanel';
 import { runEstimate } from './estimate';
@@ -21,9 +23,15 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
 
   return (
     <main className="stage-page" data-testid={`stage-${stage.id}`}>
+      <WalkthroughBanner stage={stage} />
       <h2>
         Stage {stage.number}: {stage.title}
       </h2>
+      <p className="small">
+        <a href={formatRoute({ kind: 'theory', stage: stage.id })} data-testid="stage-to-theory">
+          The math, a worked example and references →
+        </a>
+      </p>
       <p className="stage-summary">{stage.summary}</p>
 
       <Explainer
@@ -115,6 +123,7 @@ export function StagePage({ stage }: { stage: StageDefinition }) {
           onRunAttack={s.runAttack}
         />
       </div>
+      <StageFooter stage={stage} />
     </main>
   );
 }

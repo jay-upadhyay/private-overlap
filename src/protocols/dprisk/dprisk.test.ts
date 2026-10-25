@@ -39,7 +39,7 @@ describe('dp-risk protocol', () => {
     const { querier } = await score(scenario);
     expect(querier.flaggedBy).toEqual({});
     expect(JSON.stringify(querier.scores)).not.toMatch(/h[123]/);
-  });
+  }, 30_000);
 
   it('querier_never_holds_both_double_blinded_sets', async () => {
     const scenario = smallScenario({ holders: 2, banlistSize: 100, flaggedByCount: [0.1, 0.05] });

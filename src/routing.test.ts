@@ -1,29 +1,36 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { formatRoute, parseHash, type Route } from './routing';
-import { DEFAULT_STAGE, STAGES } from './stages';
+import { STAGES } from './stages';
+
+const ROUTES: Route[] = [
+  { kind: 'home' },
+  { kind: 'summary' },
+  { kind: 'debug-data' },
+  ...STAGES.map((s) => ({ kind: 'stage', stage: s.id }) as const),
+  ...STAGES.map((s) => ({ kind: 'theory', stage: s.id }) as const),
+];
 
 describe('routing', () => {
   it('round_trips_every_route', () => {
-    const routes: Route[] = [
-      ...STAGES.map((s) => ({ kind: 'stage', stage: s.id }) as const),
-      { kind: 'debug-data' },
-    ];
-    for (const route of routes) expect(parseHash(formatRoute(route))).toEqual(route);
+    for (const route of ROUTES) expect(parseHash(formatRoute(route))).toEqual(route);
   });
 
   it('accepts_trailing_slash', () => {
     expect(parseHash('#/stage/psi/')).toEqual({ kind: 'stage', stage: 'psi' });
+    expect(parseHash('#/theory/dp-risk/')).toEqual({ kind: 'theory', stage: 'dp-risk' });
     expect(parseHash('#/debug/data/')).toEqual({ kind: 'debug-data' });
   });
 
-  it('unknown_hash_falls_back_to_default', () => {
-    const known = new Set([...STAGES.map((s) => `#/stage/${s.id}`), '#/debug/data']);
+  it('unknown_hash_goes_home', () => {
+    const known = new Set(ROUTES.map(formatRoute));
     fc.assert(
       fc.property(fc.string(), (hash) => {
-        if (known.has(hash.replace(/\/$/, ''))) return;
-        expect(parseHash(hash)).toEqual({ kind: 'stage', stage: DEFAULT_STAGE });
+        if (known.has(hash.replace(/\/$/, '')) || hash === '#') return;
+        expect(parseHash(hash)).toEqual({ kind: 'home' });
       }),
     );
+    expect(parseHash('')).toEqual({ kind: 'home' });
+    expect(parseHash('#/stage/nope')).toEqual({ kind: 'home' });
   });
 });

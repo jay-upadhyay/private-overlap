@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchField } from '../data/normalize';
 import { buildPreset, customerRange, getPreset, type PresetId } from '../data/presets';
 import { DEFAULT_SCORE_EPSILON } from '../dp';
-import { tierMatchRate } from './results';
+import { compareResults, tierMatchRate } from './results';
+import { recordAttack, recordRun, sessionState, updateWalkthrough } from './session';
 import type { Progress, WireEntry } from '../protocol/types';
 import type { AttackOutcome, StageDefinition } from '../stages';
 import type { CompletedRun } from './ResultsPanel';
@@ -39,14 +40,20 @@ function useLatestRun() {
 
 /** All state behind a stage page: scenario choice, the protocol run and the attack run. */
 export function useStageRun(stage: StageDefinition) {
-  const [presetId, setPresetIdState] = useState<PresetId>(stage.defaultPreset);
-  const [field, setFieldState] = useState<MatchField>('email');
-  const [seed, setSeedState] = useState(() => String(getPreset(stage.defaultPreset).config.seed));
+  // In the guided walkthrough every stage opens on the scenario the previous one used.
+  const [initial] = useState(() => sessionState().walkthrough);
+  const [presetId, setPresetIdState] = useState<PresetId>(initial?.presetId ?? stage.defaultPreset);
+  const [field, setFieldState] = useState<MatchField>(initial?.field ?? 'email');
+  const [seed, setSeedState] = useState(
+    () => initial?.seed ?? String(getPreset(stage.defaultPreset).config.seed),
+  );
   const defaultCustomers = (id: PresetId) => {
     const { min, max } = customerRange(id);
     return String(Math.max(min, Math.round(max * stage.defaultFraction)));
   };
-  const [customers, setCustomersState] = useState(() => defaultCustomers(stage.defaultPreset));
+  const [customers, setCustomersState] = useState(() =>
+    defaultCustomers(initial?.presetId ?? stage.defaultPreset),
+  );
   const [epsilon, setEpsilon] = useState(DEFAULT_SCORE_EPSILON);
   /** Stage 4: tier accuracy of each completed run, at the ε it used. */
   const [runHistory, setRunHistory] = useState<{ epsilon: number; accuracy: number }[]>([]);
@@ -97,16 +104,19 @@ export function useStageRun(stage: StageDefinition) {
     reset();
     setPresetIdState(id);
     setSeedState(String(getPreset(id).config.seed));
+    updateWalkthrough({ presetId: id, seed: String(getPreset(id).config.seed) });
     setCustomersState(defaultCustomers(id));
     setRunHistory([]);
   };
   const setField = (f: MatchField) => {
     reset();
     setFieldState(f);
+    updateWalkthrough({ field: f });
   };
   const setSeed = (s: string) => {
     reset();
     setSeedState(s);
+    updateWalkthrough({ seed: s });
   };
   const setCustomers = (c: string) => {
     reset();
@@ -118,6 +128,7 @@ export function useStageRun(stage: StageDefinition) {
     const live = () => protocolRun.isLatest(controller);
     const parties = 1 + scenario.holders.length;
     const fractions = new Map<string, number>();
+    const log: WireEntry[] = [];
     setStatus('running');
     setProgress(0);
     setProgressLabel('');
@@ -137,11 +148,25 @@ export function useStageRun(stage: StageDefinition) {
         field,
         epsilon,
         signal: controller.signal,
-        onMessage: (entry) => live() && setWire((w) => [...w, entry]),
+        onMessage: (entry) => {
+          log.push(entry);
+          if (live()) setWire((w) => [...w, entry]);
+        },
         onProgress,
       });
       if (!live()) return;
       setCompleted({ scenario, querier, epsilon });
+      const cmp = querier.scores ? null : compareResults(scenario, querier.flaggedBy);
+      recordRun(stage.id, {
+        presetTitle: getPreset(presetId).title,
+        customers: scenario.querier.records.length,
+        field,
+        exact: cmp ? { correct: cmp.correct, missed: cmp.missed, extra: cmp.extra } : undefined,
+        tiers: querier.scores ? { accuracy: tierMatchRate(scenario, querier.scores), epsilon } : undefined,
+        messages: log.length,
+        bytes: log.reduce((sum, e) => sum + e.bytes, 0),
+        plaintextOnWire: stage.id === 'plaintext',
+      });
       if (querier.scores) {
         const accuracy = tierMatchRate(scenario, querier.scores);
         setRunHistory((h) => [...h, { epsilon, accuracy }]);
@@ -153,7 +178,7 @@ export function useStageRun(stage: StageDefinition) {
       setStatus(controller.signal.aborted ? 'cancelled' : 'error');
       setError(message(e));
     }
-  }, [protocolRun, scenario, field, stage, epsilon]);
+  }, [protocolRun, scenario, field, stage, epsilon, presetId]);
 
   const runAttack = useCallback(async () => {
     if (stage.explainer.breaks.kind !== 'attack' || !stage.runAttack) return;
@@ -175,6 +200,7 @@ export function useStageRun(stage: StageDefinition) {
       if (!live()) return;
       setAttackOutcome(outcome);
       setAttackStatus('done');
+      recordAttack(stage.id, { target: outcome.target, recall: outcome.score.recall });
     } catch (e) {
       if (!live()) return;
       setAttackStatus(controller.signal.aborted ? 'cancelled' : 'error');
