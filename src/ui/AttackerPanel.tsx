@@ -71,10 +71,21 @@ export function AttackerPanel({
 
 function AttackScore({ outcome }: { outcome: AttackOutcome }) {
   const { score } = outcome;
+  const total = score.truePositives + score.missed;
+  const claimed = score.truePositives + score.falsePositives;
   return (
     <div data-testid="attack-score">
       <p>
         Target: <strong>{outcome.target}</strong>
+      </p>
+      <p data-testid="attack-summary">
+        {score.truePositives === 0
+          ? `The attack recovered nothing: none of the ${total.toLocaleString()} entries in the target were exposed.`
+          : `The attack recovered ${score.truePositives.toLocaleString()} of the ${total.toLocaleString()} entries in the target (${formatPercent(score.recall)}). ${
+              score.falsePositives === 0
+                ? 'Every one it claimed was right.'
+                : `${score.falsePositives.toLocaleString()} of its ${claimed.toLocaleString()} claims were wrong.`
+            } ${score.recall >= 0.5 ? 'The defence of this stage does not hold against it.' : 'Most of the target stayed hidden.'}`}
       </p>
       <dl className="tally">
         <div>

@@ -11,6 +11,10 @@ export interface CompletedRun {
   querier: QuerierResult;
   /** ε per score the run used (stage 4 only). */
   epsilon?: number;
+  /** Holders the stage queried; results are checked against these only. */
+  holders?: string[];
+  /** Plain account of what just happened, from the run's own facts. */
+  narrative?: string[];
 }
 
 const VERDICT_TEXT: Record<CellVerdict, string> = { correct: '✓', missed: 'missed', extra: 'extra' };
@@ -24,6 +28,16 @@ export function ResultsPanel({ run }: { run: CompletedRun | null }) {
       <header className="panel-header">
         <h3 id="results-heading">What the querier learned</h3>
       </header>
+      {run?.narrative && (
+        <div className="what-happened" data-testid="what-happened">
+          <h4>What just happened</h4>
+          <ol>
+            {run.narrative.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ol>
+        </div>
+      )}
       {run?.querier.scores ? (
         <RiskResultsBody run={run} scores={run.querier.scores} />
       ) : run ? (
@@ -37,7 +51,7 @@ export function ResultsPanel({ run }: { run: CompletedRun | null }) {
 
 function ResultsBody({ run }: { run: CompletedRun }) {
   const { scenario } = run;
-  const cmp = compareResults(scenario, run.querier.flaggedBy);
+  const cmp = compareResults(scenario, run.querier.flaggedBy, run.holders);
   const names = new Map(scenario.holders.map((h) => [h.institution.id, h.institution.name]));
   const customers = new Map(scenario.querier.records.map((r) => [r.rowId, `${r.firstName} ${r.lastName}`]));
   const flagged = Object.keys(run.querier.flaggedBy).length;

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchField } from '../data/normalize';
 import { buildPreset, customerRange, getPreset, type PresetId } from '../data/presets';
 import { DEFAULT_SCORE_EPSILON } from '../dp';
-import { compareResults, tierMatchRate } from './results';
+import { describeRun, runFacts } from './narrative';
+import { compareResults, involvedHolders, tierMatchRate } from './results';
 import { recordAttack, recordRun, sessionState, updateWalkthrough } from './session';
 import type { Progress, WireEntry } from '../protocol/types';
 import type { AttackOutcome, StageDefinition } from '../stages';
@@ -51,8 +52,8 @@ export function useStageRun(stage: StageDefinition) {
     const { min, max } = customerRange(id);
     return String(Math.max(min, Math.round(max * stage.defaultFraction)));
   };
-  const [customers, setCustomersState] = useState(() =>
-    defaultCustomers(initial?.presetId ?? stage.defaultPreset),
+  const [customers, setCustomersState] = useState(
+    () => initial?.customers ?? defaultCustomers(initial?.presetId ?? stage.defaultPreset),
   );
   const [epsilon, setEpsilon] = useState(DEFAULT_SCORE_EPSILON);
   /** Stage 4: tier accuracy of each completed run, at the ε it used. */
@@ -104,7 +105,11 @@ export function useStageRun(stage: StageDefinition) {
     reset();
     setPresetIdState(id);
     setSeedState(String(getPreset(id).config.seed));
-    updateWalkthrough({ presetId: id, seed: String(getPreset(id).config.seed) });
+    updateWalkthrough({
+      presetId: id,
+      seed: String(getPreset(id).config.seed),
+      customers: defaultCustomers(id),
+    });
     setCustomersState(defaultCustomers(id));
     setRunHistory([]);
   };
@@ -121,6 +126,7 @@ export function useStageRun(stage: StageDefinition) {
   const setCustomers = (c: string) => {
     reset();
     setCustomersState(c);
+    updateWalkthrough({ customers: c });
   };
 
   const run = useCallback(async () => {
@@ -129,6 +135,7 @@ export function useStageRun(stage: StageDefinition) {
     const parties = 1 + scenario.holders.length;
     const fractions = new Map<string, number>();
     const log: WireEntry[] = [];
+    const started = performance.now();
     setStatus('running');
     setProgress(0);
     setProgressLabel('');
@@ -155,17 +162,23 @@ export function useStageRun(stage: StageDefinition) {
         onProgress,
       });
       if (!live()) return;
-      setCompleted({ scenario, querier, epsilon });
-      const cmp = querier.scores ? null : compareResults(scenario, querier.flaggedBy);
-      recordRun(stage.id, {
-        presetTitle: getPreset(presetId).title,
-        customers: scenario.querier.records.length,
+      const holders = involvedHolders(stage.id, scenario);
+      const cmp = querier.scores ? null : compareResults(scenario, querier.flaggedBy, holders);
+      const facts = runFacts(
+        stage.id,
+        scenario,
         field,
-        exact: cmp ? { correct: cmp.correct, missed: cmp.missed, extra: cmp.extra } : undefined,
-        tiers: querier.scores ? { accuracy: tierMatchRate(scenario, querier.scores), epsilon } : undefined,
-        messages: log.length,
-        bytes: log.reduce((sum, e) => sum + e.bytes, 0),
-        plaintextOnWire: stage.id === 'plaintext',
+        querier,
+        log,
+        performance.now() - started,
+        epsilon,
+        cmp ? { correct: cmp.correct, missed: cmp.missed, extra: cmp.extra } : undefined,
+      );
+      setCompleted({ scenario, querier, epsilon, holders, narrative: describeRun(facts) });
+      recordRun(stage.id, {
+        scenarioKey: `${presetId}/${scenario.querier.records.length}/${scenario.config.seed}/${field}`,
+        scenarioLabel: `${getPreset(presetId).title}, ${scenario.querier.records.length.toLocaleString()} customers, seed ${scenario.config.seed}, ${field}`,
+        facts,
       });
       if (querier.scores) {
         const accuracy = tierMatchRate(scenario, querier.scores);
@@ -200,7 +213,12 @@ export function useStageRun(stage: StageDefinition) {
       if (!live()) return;
       setAttackOutcome(outcome);
       setAttackStatus('done');
-      recordAttack(stage.id, { target: outcome.target, recall: outcome.score.recall });
+      recordAttack(stage.id, {
+        target: outcome.target,
+        recovered: outcome.score.truePositives,
+        total: outcome.score.truePositives + outcome.score.missed,
+        recall: outcome.score.recall,
+      });
     } catch (e) {
       if (!live()) return;
       setAttackStatus(controller.signal.aborted ? 'cancelled' : 'error');

@@ -11,9 +11,11 @@ describe('App', () => {
     render(<App />);
     const nav = screen.getByRole('navigation', { name: 'Stages' });
     const links = within(nav).getAllByRole('link');
-    expect(links).toHaveLength(STAGES.length + 1);
-    STAGES.forEach((stage, i) => expect(links[i]).toHaveTextContent(stage.title));
+    expect(links).toHaveLength(STAGES.length + 2);
+    expect(links[0]).toHaveTextContent('Home');
+    STAGES.forEach((stage, i) => expect(links[i + 1]).toHaveTextContent(stage.title));
     expect(links.at(-1)).toHaveTextContent('Summary');
+    expect(within(nav).getByTestId('nav-walkthrough')).toHaveTextContent('Walkthrough');
   });
 
   it('defaults_to_landing_page', () => {
@@ -57,7 +59,8 @@ describe('App', () => {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     for (const stage of STAGES)
-      expect(screen.getByTestId(`summary-${stage.id}`)).toHaveTextContent('Not run yet');
+      expect(screen.getByTestId(`summary-${stage.id}-scenario`)).toHaveTextContent('Not run yet');
+    expect(screen.queryByTestId('bottom-line')).toBeNull();
   });
 
   it('follows_hash_changes', () => {

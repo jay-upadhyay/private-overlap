@@ -15,11 +15,35 @@ test('full_walkthrough', async ({ page }) => {
     await page.getByTestId('next-stage').click();
   }
   await expect(page.getByTestId('summary')).toBeVisible();
-  for (const id of STAGE_IDS)
-    await expect(page.getByTestId(`summary-${id}`)).not.toContainText('Not run yet');
-  await expect(page.getByTestId('summary-plaintext')).toContainText('identifiers readable');
-  await expect(page.getByTestId('summary-psi')).toContainText('no readable identifiers');
-  await expect(page.getByTestId('summary-dp-risk')).toContainText('of tiers exact at ε 0.5');
+  for (const id of STAGE_IDS) {
+    await expect(page.getByTestId(`summary-${id}-scenario`)).toContainText('Consortium screen');
+  }
+  // One scenario throughout, so the comparison is like for like and the bottom line appears.
+  await expect(page.getByTestId('scenario-same')).toBeVisible();
+  await expect(page.getByTestId('bottom-line')).toContainText('found exactly the right customers');
+  await expect(page.getByTestId('summary-plaintext-banned')).toContainText('readable');
+  await expect(page.getByTestId('summary-hashing-banned')).toContainText('as hashes');
+  await expect(page.getByTestId('summary-psi-banned')).toHaveText('None');
+  await expect(page.getByTestId('summary-dp-risk-accuracy')).toContainText('of tiers match');
+});
+
+test('nav_walkthrough_button_starts_the_tour', async ({ page }) => {
+  await page.goto('./#/stage/psi');
+  await page.getByTestId('nav-walkthrough').click();
+  await expect(page.getByTestId('stage-plaintext')).toBeVisible();
+  await expect(page.getByTestId('walkthrough-banner')).toContainText('stage 1 of 5');
+});
+
+test('mixed_scenarios_warn_on_summary', async ({ page }) => {
+  await page.goto('./#/stage/plaintext');
+  await page.getByTestId('run-button').click();
+  await expect(page.getByTestId('run-status')).toHaveAttribute('data-status', 'done');
+  await page.goto('./#/stage/multi-psi');
+  await page.getByTestId('run-button').click();
+  await expect(page.getByTestId('run-status')).toHaveAttribute('data-status', 'done', { timeout: 30_000 });
+  await page.getByRole('link', { name: 'Summary' }).click();
+  await expect(page.getByTestId('scenario-warning')).toContainText('2 different scenarios');
+  await expect(page.getByTestId('bottom-line')).toHaveCount(0);
 });
 
 test('theory_pages_render_math_and_link_back', async ({ page }) => {

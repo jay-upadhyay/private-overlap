@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { MatchField } from '../data/normalize';
+import type { RunFacts } from './narrative';
 import type { PresetId } from '../data/presets';
 import type { StageId } from '../stages';
 
@@ -10,22 +11,17 @@ export interface WalkthroughState {
   presetId: PresetId;
   seed: string;
   field: MatchField;
+  /** Customer count, so every stage runs at the same size (PSI keeps it small enough to be quick). */
+  customers: string;
 }
 
 /** What one completed run showed, for the summary table. */
 export interface StageRunRecord {
-  presetTitle: string;
-  customers: number;
-  field: MatchField;
-  /** Stages 0-3: per (customer, holder) pair against ground truth. */
-  exact?: { correct: number; missed: number; extra: number };
-  /** Stage 4: share of released tiers that match the exact count, and the ε used. */
-  tiers?: { accuracy: number; epsilon: number };
-  messages: number;
-  bytes: number;
-  /** Raw identifiers were readable on the wire. */
-  plaintextOnWire: boolean;
-  attack?: { target: string; recall: number };
+  /** Preset, size, seed and field: runs compare like for like only when these match. */
+  scenarioKey: string;
+  scenarioLabel: string;
+  facts: RunFacts;
+  attack?: { target: string; recovered: number; total: number; recall: number };
 }
 
 interface SessionState {
@@ -55,7 +51,12 @@ export function sessionState(): SessionState {
   return state;
 }
 
-export const WALKTHROUGH_START: WalkthroughState = { presetId: 'consortium', seed: '303', field: 'email' };
+export const WALKTHROUGH_START: WalkthroughState = {
+  presetId: 'consortium',
+  seed: '303',
+  field: 'email',
+  customers: '1000',
+};
 
 export function startWalkthrough(): void {
   set({ walkthrough: WALKTHROUGH_START, runs: {} });
@@ -74,7 +75,7 @@ export function recordRun(stage: StageId, record: StageRunRecord): void {
   set({ ...state, runs: { ...state.runs, [stage]: record } });
 }
 
-export function recordAttack(stage: StageId, attack: { target: string; recall: number }): void {
+export function recordAttack(stage: StageId, attack: NonNullable<StageRunRecord['attack']>): void {
   const run = state.runs[stage];
   if (run) set({ ...state, runs: { ...state.runs, [stage]: { ...run, attack } } });
 }

@@ -11,7 +11,8 @@ export function WalkthroughBanner({ stage }: { stage: StageDefinition }) {
     <div className="walkthrough-banner" data-testid="walkthrough-banner" role="note">
       <span>
         Guided walkthrough · stage {stage.number + 1} of {STAGES.length} · same scenario throughout:{' '}
-        {getPreset(walkthrough.presetId).title}, seed {walkthrough.seed}, {walkthrough.field}
+        {getPreset(walkthrough.presetId).title}, {Number(walkthrough.customers).toLocaleString()} customers,
+        seed {walkthrough.seed}, {walkthrough.field}
       </span>
       <button type="button" className="button" onClick={endWalkthrough} data-testid="exit-walkthrough">
         Exit walkthrough

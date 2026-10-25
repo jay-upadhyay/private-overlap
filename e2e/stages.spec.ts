@@ -17,6 +17,7 @@ for (const { id, message } of STAGES) {
     await expect(tally).toContainText('Missed0');
     await expect(tally).toContainText('Extra0');
     await expect(page.getByTestId('wire-entry').filter({ hasText: message }).first()).toBeVisible();
+    await expect(page.getByTestId('what-happened')).toContainText('customers on a banlist');
   });
 }
 

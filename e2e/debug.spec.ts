@@ -9,6 +9,6 @@ test('debug_data_page_shows_presets', async ({ page }) => {
 
 test('debug_page_is_not_in_nav', async ({ page }) => {
   await page.goto('./');
-  await expect(page.getByRole('navigation', { name: 'Stages' }).getByRole('link')).toHaveCount(6);
+  await expect(page.getByRole('navigation', { name: 'Stages' }).getByRole('link')).toHaveCount(7);
   await expect(page.getByRole('link', { name: /debug/i })).toHaveCount(0);
 });

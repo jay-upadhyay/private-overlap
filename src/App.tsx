@@ -2,6 +2,7 @@ import { DataDebugPage } from './debug/DataDebugPage';
 import { formatRoute, useRoute, type Route } from './routing';
 import { STAGES, type StageDefinition } from './stages';
 import { Landing } from './ui/Landing';
+import { startWalkthrough } from './ui/session';
 import { StagePage } from './ui/StagePage';
 import { SummaryPage } from './ui/SummaryPage';
 import { TheoryPage } from './ui/theory/TheoryPage';
@@ -49,6 +50,11 @@ export function App() {
 
       <nav aria-label="Stages" className="stage-nav">
         <ol>
+          <li>
+            <a href={formatRoute({ kind: 'home' })} aria-current={route.kind === 'home' ? 'page' : undefined}>
+              Home
+            </a>
+          </li>
           {STAGES.map((s) => (
             <li key={s.id}>
               <a
@@ -66,6 +72,19 @@ export function App() {
             >
               Summary
             </a>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="nav-walkthrough"
+              data-testid="nav-walkthrough"
+              onClick={() => {
+                startWalkthrough();
+                window.location.hash = formatRoute({ kind: 'stage', stage: STAGES[0]!.id });
+              }}
+            >
+              ▶ Walkthrough
+            </button>
           </li>
         </ol>
       </nav>
