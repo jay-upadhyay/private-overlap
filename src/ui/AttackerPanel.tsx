@@ -11,7 +11,7 @@ interface AttackerPanelProps {
   status: RunStatus;
   outcome: AttackOutcome | null;
   error: string | null;
-  /** False while this stage's attack demo is not built (see BACKLOG.md). */
+  /** False while this stage's attack demo is not built (see FUTURE_WORK.md). */
   available: boolean;
   onRunAttack(): void;
 }

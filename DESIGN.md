@@ -64,7 +64,8 @@ the one it queried.
 - The per-customer budget cap is keyed by the querier's own row ids, so it holds only for an
   honest querier.
 - At ε 0.5 per score, only about 60% of tiers are exact: the privacy is real and so is the cost.
-- [Attack demos still open in BACKLOG.md at submission time, if any.]
+- Not built, by choice: a dedicated stage 3 attribution panel (the leak is shown elsewhere on the
+  page), attack panels for stage 4, and the benchmark phase. See [FUTURE_WORK.md](FUTURE_WORK.md).
 
 ## Extensions with more time
 
@@ -78,4 +79,6 @@ the one it queried.
 
 ## Time spent
 
-[About N hours. The commit history spans 13:20 to 18:05 on 2026-10-24, after planning.]
+About 5 hours of active work in one day (2026-10-24): from 12:25 to 19:30, minus a 2 h 15 min
+pause (15:20 to 17:35) while waiting out a usage limit. That includes planning, the spec and phase
+documents, and the final review. Commits run from 13:20 to 19:31.

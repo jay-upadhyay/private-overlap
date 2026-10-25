@@ -73,7 +73,7 @@ suite runs again against the live URL.
 
 ## Tests
 
-231 unit tests and 39 end-to-end tests. Tests are named as claims (for example
+251 unit tests and 42 end-to-end tests. Tests are named as claims (for example
 `querier_never_holds_both_double_blinded_sets`). They cover:
 
 - every protocol's result against ground truth, across seeds, sizes and match fields (property
@@ -82,4 +82,4 @@ suite runs again against the live URL.
 - the noise sampler's distribution and the ledger's arithmetic;
 - every page in a real browser, including a full walkthrough and an accessibility scan (axe).
 
-Open items for the author are tracked in [BACKLOG.md](BACKLOG.md).
+Work scoped out on purpose is listed in [FUTURE_WORK.md](FUTURE_WORK.md).

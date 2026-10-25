@@ -43,7 +43,7 @@ export function useLedgerVersion(): number {
 
 /**
  * Ledger keys for the scenario's customers. Row ids repeat across seeds and sizes, so the key
- * includes both. Keys come from the querier, which only works for an honest querier (BACKLOG.md).
+ * includes both. Keys come from the querier, which only works for an honest querier (FUTURE_WORK.md).
  */
 export function customerKeys(scenario: Scenario): string[] {
   const tag = `${scenario.config.seed}/${scenario.config.querier.customers}`;

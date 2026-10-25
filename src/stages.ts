@@ -60,7 +60,7 @@ export interface StageDefinition {
   runProtocol?: (ctx: StageRunContext) => Promise<QuerierResult>;
   /**
    * Runs the attack named in the explainer. Ignored when the explainer marks the attack out of
-   * scope. Unset means the attack demo is not built yet (see BACKLOG.md).
+   * scope. Unset means the attack demo is not built yet (see FUTURE_WORK.md).
    */
   runAttack?: (ctx: AttackRunContext) => Promise<AttackOutcome>;
   /** How long an attack may run before the page stops it. Defaults to ATTACK_TIMEOUT_MS. */
