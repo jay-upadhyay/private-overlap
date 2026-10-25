@@ -20,4 +20,26 @@ for dir in "$PREFIX" "$PREFIX"-*; do
     uvx claude-code-transcripts json "$f" -o "$OUT_DIR/$id" --json --repo "$REPO"
   done
 done
-echo "Done: $OUT_DIR"
+# Redact personal details before anything is committed: both email addresses and the
+# name of the author's other GitHub account.
+python3 - "$OUT_DIR" <<'PY'
+import os, re, sys
+pats = [
+    (re.compile(r"jay\.c\.upadhyay(?:@|&#64;|&#x40;|%40|\\u0040)gmail\.com", re.I), "[email]"),
+    (re.compile(r"mynridost(?:@|&#64;|&#x40;|%40|\\u0040)gmail\.com", re.I), "[email]"),
+    (re.compile(r"mynridost(?:-afk)?", re.I), "[other-account]"),
+]
+for d, _, files in os.walk(sys.argv[1]):
+    for f in files:
+        p = os.path.join(d, f)
+        try:
+            s = open(p, encoding="utf-8").read()
+        except UnicodeDecodeError:
+            continue
+        n = s
+        for rx, rep in pats:
+            n = rx.sub(rep, n)
+        if n != s:
+            open(p, "w", encoding="utf-8").write(n)
+PY
+echo "Done: $OUT_DIR (redacted)"
