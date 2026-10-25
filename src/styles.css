@@ -804,3 +804,14 @@ input[type='number'] {
   border-radius: 8px;
   background: var(--accent-soft);
 }
+
+.checked-scope {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+
+.tally-heading {
+  margin: 12px 0 4px;
+  font-size: 0.9rem;
+}

@@ -82,3 +82,21 @@ test.describe('dp-risk', () => {
     await expect(page.getByTestId('epsilon-table')).toContainText('0.5');
   });
 });
+
+test('multi_party_results_explain_pairs_and_break_down_by_institution', async ({ page }) => {
+  await page.goto('./#/stage/multi-psi');
+  await page.getByTestId('run-button').click();
+  await expect(page.getByTestId('run-status')).toHaveAttribute('data-status', 'done', { timeout: 30_000 });
+  await expect(page.getByTestId('results-summary')).toContainText('flagged by any of the 4 institutions');
+  await expect(page.getByTestId('tally-explainer')).toContainText('counts twice');
+  await expect(page.getByTestId('per-holder-breakdown').locator('tbody tr')).toHaveCount(4);
+});
+
+test('two_party_results_say_which_institution_was_checked', async ({ page }) => {
+  await page.goto('./#/stage/psi');
+  await page.getByTestId('preset-picker').selectOption('consortium');
+  await page.getByTestId('run-button').click();
+  await expect(page.getByTestId('run-status')).toHaveAttribute('data-status', 'done', { timeout: 30_000 });
+  await expect(page.getByTestId('checked-scope')).toContainText('Checked against Halcyon Brokerage only');
+  await expect(page.getByTestId('per-holder-breakdown')).toHaveCount(0);
+});

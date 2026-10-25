@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { expectedQuerierResult } from '../protocol/screening';
 import { smallScenario } from '../test/fixtures';
-import { compareResults, involvedHolders } from './results';
+import { compareResults, involvedHolders, perHolder, truthCustomers } from './results';
 
 describe('ui/results', () => {
   const scenario = smallScenario({ holders: 2, flaggedByCount: [0.1, 0.05] });
@@ -41,5 +41,24 @@ describe('compareResults for two-party PSI', () => {
     expect(cmp.missed).toBe(0);
     expect(cmp.extra).toBe(0);
     expect(cmp.correct).toBe(Object.keys(got).length);
+  });
+});
+
+describe('per-institution breakdown', () => {
+  it('splits_pairs_by_holder_and_counts_customers_once', () => {
+    const scenario = smallScenario({ holders: 3, banlistSize: 120, flaggedByCount: [0.1, 0.05, 0.02] });
+    const cmp = compareResults(scenario, expectedQuerierResult(scenario));
+    const tallies = perHolder(cmp);
+    expect(tallies.map((t) => t.holder)).toEqual(['h1', 'h2', 'h3']);
+    // Pairs add up across institutions; customers are counted once however many flag them.
+    expect(tallies.reduce((n, t) => n + t.correct, 0)).toBe(cmp.correct);
+    expect(truthCustomers(cmp)).toBe(Object.keys(scenario.truth.flaggedBy).length);
+    expect(cmp.correct).toBeGreaterThan(truthCustomers(cmp));
+    for (const t of tallies) {
+      expect(t.missed + t.extra).toBe(0);
+      expect(t.flagged).toBe(
+        Object.values(scenario.truth.flaggedBy).filter((by) => by.includes(t.holder)).length,
+      );
+    }
   });
 });

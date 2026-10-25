@@ -1,7 +1,7 @@
 import type { Scenario } from '../data/scenario';
 import type { QuerierResult } from '../protocol/screening';
 import { TIER_LABELS, tierOf, type Tier } from '../dp/bounds';
-import { compareResults, type CellVerdict } from './results';
+import { compareResults, perHolder, truthCustomers, type CellVerdict } from './results';
 
 /** Customers listed in the table; the counts always cover every row. */
 export const RESULT_ROWS = 25;
@@ -55,12 +55,26 @@ function ResultsBody({ run }: { run: CompletedRun }) {
   const names = new Map(scenario.holders.map((h) => [h.institution.id, h.institution.name]));
   const customers = new Map(scenario.querier.records.map((r) => [r.rowId, `${r.firstName} ${r.lastName}`]));
   const flagged = Object.keys(run.querier.flaggedBy).length;
+  const truth = truthCustomers(cmp);
+  const pairs = cmp.correct + cmp.extra;
+  const checked = cmp.holders.map((h) => names.get(h) ?? h);
+  const skipped = scenario.holders.length - cmp.holders.length;
+  const scope =
+    checked.length === 1 ? checked[0]! : `any of the ${checked.length.toLocaleString()} institutions`;
 
   return (
     <>
+      {skipped > 0 && (
+        <p className="checked-scope small" data-testid="checked-scope">
+          Checked against {checked.join(', ')} only. Two-party PSI queries one institution, so the other{' '}
+          {skipped} in this preset are not consulted on this page.
+        </p>
+      )}
       <p data-testid="results-summary">
-        {flagged.toLocaleString()} of {scenario.querier.records.length.toLocaleString()} customers flagged.
+        <strong>{flagged.toLocaleString()}</strong> of {scenario.querier.records.length.toLocaleString()}{' '}
+        customers are flagged by {scope} (ground truth: {truth.toLocaleString()}).
       </p>
+      <h4 className="tally-heading">Checked per customer and institution</h4>
       <dl className="tally" data-testid="results-tally">
         <div className="tally-correct">
           <dt>Correct</dt>
@@ -75,7 +89,44 @@ function ResultsBody({ run }: { run: CompletedRun }) {
           <dd>{cmp.extra}</dd>
         </div>
       </dl>
-      <p className="muted small">Checked against ground truth, per customer and institution.</p>
+      <p className="muted small" data-testid="tally-explainer">
+        Each (customer, institution) flag is checked against ground truth separately.
+        {pairs !== flagged &&
+          ` A customer flagged by two institutions counts twice, so ${flagged.toLocaleString()} customers make ${pairs.toLocaleString()} flags.`}
+      </p>
+      {cmp.holders.length > 1 && (
+        <div className="table-scroll">
+          <table className="results-table" data-testid="per-holder-breakdown">
+            <caption className="small">Per institution</caption>
+            <thead>
+              <tr>
+                <th scope="col">Institution</th>
+                <th scope="col">Banlist entries</th>
+                <th scope="col">Customers it flagged</th>
+                <th scope="col">Correct</th>
+                <th scope="col">Missed</th>
+                <th scope="col">Extra</th>
+              </tr>
+            </thead>
+            <tbody>
+              {perHolder(cmp).map((t) => (
+                <tr key={t.holder}>
+                  <th scope="row">{names.get(t.holder) ?? t.holder}</th>
+                  <td>
+                    {(
+                      scenario.holders.find((h) => h.institution.id === t.holder)?.records.length ?? 0
+                    ).toLocaleString()}
+                  </td>
+                  <td>{t.flagged.toLocaleString()}</td>
+                  <td>{t.correct}</td>
+                  <td>{t.missed}</td>
+                  <td>{t.extra}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {cmp.rows.length > 0 && (
         <div className="table-scroll">
           <table className="results-table">

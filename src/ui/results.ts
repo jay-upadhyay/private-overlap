@@ -70,3 +70,30 @@ export function tierMatchRate(scenario: Scenario, scores: NonNullable<QuerierRes
   }
   return scored === 0 ? 0 : matching / scored;
 }
+
+export interface HolderTally {
+  holder: PartyId;
+  /** Customers the result says this holder flags. */
+  flagged: number;
+  correct: number;
+  missed: number;
+  extra: number;
+}
+
+/** The pair-level comparison split by institution, for the per-institution breakdown. */
+export function perHolder(cmp: ResultComparison): HolderTally[] {
+  return cmp.holders.map((holder) => {
+    const t: HolderTally = { holder, flagged: 0, correct: 0, missed: 0, extra: 0 };
+    for (const row of cmp.rows) {
+      const v = row.cells[holder];
+      if (v) t[v]++;
+      if (v === 'correct' || v === 'extra') t.flagged++;
+    }
+    return t;
+  });
+}
+
+/** Customers ground truth flags at one or more of the compared holders. */
+export function truthCustomers(cmp: ResultComparison): number {
+  return cmp.rows.filter((r) => Object.values(r.cells).some((v) => v === 'correct' || v === 'missed')).length;
+}
