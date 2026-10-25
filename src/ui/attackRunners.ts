@@ -4,14 +4,7 @@ import { preimageSearch } from '../attacks/preimage/preimageSearch';
 import { scoreRecovery } from '../attacks/score';
 import { unpackFixed } from '../crypto/bytes';
 import { HASH_BYTES } from '../crypto/sha256';
-import {
-  emailBases,
-  emailSeparators,
-  EMAIL_NUMBER_SUFFIX_MAX,
-  EMAIL_YEAR_SUFFIX_RANGE,
-} from '../data/identity';
 import { extractIdentifiers } from '../data/identifiers';
-import { EMAIL_DOMAINS } from '../data/names';
 import { runInMemory } from '../protocol/run';
 import { screeningParties, type ScreeningProtocol } from '../protocol/screening';
 import { hashingProtocol, MSG_BANLIST } from '../protocols/hashing';
@@ -43,44 +36,7 @@ function takeCandidates<T>(source: Iterable<T>, limit: number): T[] {
 const buildHashingCandidates = (context: AttackRunContext): string[] => {
   switch (context.field) {
     case 'email': {
-      const MAX_EMAIL_CANDIDATES = 50_000;
-      const seen = new Set<string>();
-      const candidates: string[] = [];
-      const records = [
-        ...context.scenario.querier.records,
-        ...context.scenario.holders.flatMap((holder) => holder.records),
-      ];
-      const push = (value: string) => {
-        if (candidates.length >= MAX_EMAIL_CANDIDATES) return false;
-        if (seen.has(value)) return true;
-        seen.add(value);
-        candidates.push(value);
-        return true;
-      };
-
-      for (const record of records) {
-        const first = record.firstName.toLowerCase();
-        const last = record.lastName.toLowerCase();
-        for (const domain of EMAIL_DOMAINS) {
-          for (const sep of emailSeparators(domain)) {
-            for (const base of emailBases(first, last, sep)) {
-              const suffixes = [''];
-              for (let n = 0; n < EMAIL_NUMBER_SUFFIX_MAX; n++) suffixes.push(String(n));
-              for (let y = EMAIL_YEAR_SUFFIX_RANGE[0]; y <= EMAIL_YEAR_SUFFIX_RANGE[1]; y++) {
-                suffixes.push(String(y));
-              }
-              for (const suffix of suffixes) {
-                if (!push(`${base}${suffix}@${domain}`)) return candidates;
-              }
-            }
-          }
-        }
-      }
-
-      for (const candidate of emailPatternCandidates({ numberSuffixes: true, yearSuffixes: true })) {
-        if (!push(candidate)) break;
-      }
-      return candidates;
+      return takeCandidates(emailPatternCandidates({ numberSuffixes: true, yearSuffixes: true }), 250_000);
     }
     case 'phone': {
       const prefixes = [
