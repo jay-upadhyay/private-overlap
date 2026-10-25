@@ -815,3 +815,10 @@ input[type='number'] {
   margin: 12px 0 4px;
   font-size: 0.9rem;
 }
+
+.app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}

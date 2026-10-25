@@ -7,7 +7,8 @@ that walks through five ways to compute that overlap, from sending the lists in 
 private set intersection (PSI) to differential privacy (DP), and shows what each one leaks and
 what breaks it. Everything runs in your browser, with each institution in its own Web Worker.
 
-Design rationale: [DESIGN.md](DESIGN.md).
+Design rationale: [DESIGN.md](DESIGN.md). Planning documents: the original [spec](docs/spec.md) and
+the [phase plan](docs/phases.md), each with a final status section.
 
 ## Using it
 
@@ -73,7 +74,7 @@ suite runs again against the live URL.
 
 ## Tests
 
-251 unit tests and 42 end-to-end tests. Tests are named as claims (for example
+251 unit tests and 43 end-to-end tests. Tests are named as claims (for example
 `querier_never_holds_both_double_blinded_sets`). They cover:
 
 - every protocol's result against ground truth, across seeds, sizes and match fields (property

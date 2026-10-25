@@ -46,7 +46,8 @@ for whoever shares them. That makes the tradeoffs concrete instead of abstract.
 
 ## How it was built
 
-Phases, each ending deployed with its tests green: a scaffold with CI and Pages deploy; the data
+Phases ([docs/phases.md](docs/phases.md); the original spec is [docs/spec.md](docs/spec.md)), each
+ending deployed with its tests green: a scaffold with CI and Pages deploy; the data
 generator and protocol contract; then five tracks in parallel (worker runtime, UI shell, hashing,
 PSI, DP primitives) on a shared kit of crypto, data and test helpers so no track duplicated
 another; then integration, the ε chart, and the walkthrough, theory pages and summary.

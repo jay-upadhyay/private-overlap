@@ -93,6 +93,9 @@ export function App() {
 
       <footer className="app-footer">
         <span data-testid="worker-health">Workers: {workers}</span>
+        <a href={formatRoute({ kind: 'debug-data' })} data-testid="footer-test-data">
+          Inspect the synthetic test data
+        </a>
       </footer>
     </div>
   );
