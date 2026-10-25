@@ -12,7 +12,7 @@ export function Landing() {
     <main className="stage-page landing" data-testid="landing">
       <h2>Find shared bad actors without sharing your lists</h2>
       <p>
-        A crypto exchange wants to know which of its customers other exchanges, brokers and banks have banned.
+        A bank, broker or crypto exchange wants to know which of its customers other institutions have banned.
         Nobody will hand over a customer list or a banlist, so the institutions compute the overlap with
         cryptography instead, in your browser, with each institution in its own Web Worker.
       </p>

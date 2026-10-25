@@ -2,8 +2,7 @@
 
 **Live demo: https://jay-upadhyay.github.io/private-overlap/**
 
-A crypto exchange wants to know which of its customers other exchanges, brokers and banks have
-banned, but nobody will hand over a customer list or a banlist. This is an interactive explainer
+Any financial institution, whether a bank, a broker or a crypto exchange, wants to know which of its customers other institutions have banned, but nobody will hand over a customer list or a banlist. This is an interactive explainer
 that walks through five ways to compute that overlap, from sending the lists in the clear to
 private set intersection (PSI) to differential privacy (DP), and shows what each one leaks and
 what breaks it. Everything runs in your browser, with each institution in its own Web Worker.
@@ -12,8 +11,7 @@ Design rationale: [DESIGN.md](DESIGN.md).
 
 ## Using it
 
-Open the live demo and press **▶ Walkthrough**. It carries one synthetic scenario (an exchange
-screening 1,000 customers against four institutions' banlists) through all five stages and
+Open the live demo and press **▶ Walkthrough**. It carries one synthetic scenario (one institution screening 1,000 customers against four other institutions' banlists) through all five stages and
 ends on a side-by-side summary. No data or setup is needed.
 
 | Stage | Technique                                               | What the querier learns                                      | What breaks it                                           |

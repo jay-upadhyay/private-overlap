@@ -11,8 +11,7 @@ can state those facts. This prototype lets a reviewer _watch_ them: each stage r
 protocol on realistic synthetic data, shows every message on the wire, checks the result against
 ground truth, and ends on the weakness that motivates the next stage.
 
-**The use case** is fraud screening between financial institutions: an exchange checking whether
-its customers appear on other exchanges', brokers' and banks' banlists. Both sides have real
+**The use case** is fraud screening between financial institutions: any institution (a bank, a broker, a crypto exchange) checking whether its customers appear on other institutions' banlists. The demo's fictional parties happen to be exchanges, brokers and banks, but nothing in the protocols depends on the kind of institution. Both sides have real
 reasons to keep their data private. Customer lists are competitive, and banlists carry legal risk
 for whoever shares them. That makes the tradeoffs concrete instead of abstract.
 
