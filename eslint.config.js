@@ -22,4 +22,10 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  {
+    // Theory content files export a data object whose Body is a component; hot reload of
+    // those pages is not worth splitting every file in two.
+    files: ['src/ui/theory/content/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 );

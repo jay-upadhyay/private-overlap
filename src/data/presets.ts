@@ -57,7 +57,37 @@ export function getPreset(id: PresetId): Preset {
   return preset;
 }
 
-export function buildPreset(id: PresetId, seed?: number): Scenario {
-  const { config } = getPreset(id);
+/** Smallest custom size offered (or the preset's own size, if smaller). */
+export const MIN_CUSTOMERS = 100;
+
+/** The customer counts a preset can be scaled to: [min, the preset's own size]. */
+export function customerRange(id: PresetId): { min: number; max: number } {
+  const max = getPreset(id).config.querier.customers;
+  return { min: Math.min(MIN_CUSTOMERS, max), max };
+}
+
+/**
+ * The preset scaled to `customers`, with every banlist scaled by the same factor, so overlap
+ * fractions (and the story) stay the same at a size elliptic-curve PSI runs in seconds.
+ */
+export function scaledConfig(config: ScenarioConfig, customers: number): ScenarioConfig {
+  const full = config.querier.customers;
+  if (customers === full) return config;
+  if (!Number.isInteger(customers) || customers < 1) throw new RangeError(`bad customer count ${customers}`);
+  const factor = customers / full;
+  return {
+    ...config,
+    querier: { ...config.querier, customers },
+    holders: config.holders.map((h) => ({
+      ...h,
+      banlistSize: Math.max(1, Math.round(h.banlistSize * factor)),
+    })),
+  };
+}
+
+/** `customers` defaults to the preset's own size. */
+export function buildPreset(id: PresetId, seed?: number, customers?: number): Scenario {
+  const base = getPreset(id).config;
+  const config = scaledConfig(base, customers ?? base.querier.customers);
   return buildScenario(seed === undefined ? config : { ...config, seed });
 }
