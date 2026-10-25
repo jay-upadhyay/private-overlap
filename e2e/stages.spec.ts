@@ -29,6 +29,14 @@ test('psi_wire_carries_no_identifiers', async ({ page }) => {
   await expect(page.getByTestId('wire-inspector')).not.toContainText('@');
 });
 
+test('hashing_attack_button_completes_without_hanging', async ({ page }) => {
+  await page.goto('./#/stage/hashing');
+  await page.getByTestId('run-attack').click();
+  await expect(page.getByTestId('attack-status')).toHaveAttribute('data-status', 'done', { timeout: 30_000 });
+  await expect(page.getByTestId('run-attack')).toBeEnabled();
+  await expect(page.getByTestId('attack-score')).toContainText('Target:');
+});
+
 test.describe('dp-risk', () => {
   const runAndWait = async (page: import('@playwright/test').Page, status: 'done' | 'error') => {
     await page.getByTestId('run-button').click();

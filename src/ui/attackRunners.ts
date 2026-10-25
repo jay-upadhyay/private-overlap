@@ -43,12 +43,21 @@ function takeCandidates<T>(source: Iterable<T>, limit: number): T[] {
 const buildHashingCandidates = (context: AttackRunContext): string[] => {
   switch (context.field) {
     case 'email': {
+      const MAX_EMAIL_CANDIDATES = 50_000;
       const seen = new Set<string>();
       const candidates: string[] = [];
       const records = [
         ...context.scenario.querier.records,
         ...context.scenario.holders.flatMap((holder) => holder.records),
       ];
+      const push = (value: string) => {
+        if (candidates.length >= MAX_EMAIL_CANDIDATES) return false;
+        if (seen.has(value)) return true;
+        seen.add(value);
+        candidates.push(value);
+        return true;
+      };
+
       for (const record of records) {
         const first = record.firstName.toLowerCase();
         const last = record.lastName.toLowerCase();
@@ -61,16 +70,17 @@ const buildHashingCandidates = (context: AttackRunContext): string[] => {
                 suffixes.push(String(y));
               }
               for (const suffix of suffixes) {
-                const email = `${base}${suffix}@${domain}`;
-                if (seen.has(email)) continue;
-                seen.add(email);
-                candidates.push(email);
+                if (!push(`${base}${suffix}@${domain}`)) return candidates;
               }
             }
           }
         }
       }
-      return candidates.length > 0 ? candidates : takeCandidates(emailPatternCandidates(), 80_000);
+
+      for (const candidate of emailPatternCandidates({ numberSuffixes: true, yearSuffixes: true })) {
+        if (!push(candidate)) break;
+      }
+      return candidates;
     }
     case 'phone': {
       const prefixes = [

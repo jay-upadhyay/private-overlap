@@ -63,6 +63,8 @@ export interface StageDefinition {
    * scope. Unset means the attack demo is not built yet (see BACKLOG.md).
    */
   runAttack?: (ctx: AttackRunContext) => Promise<AttackOutcome>;
+  /** How long an attack may run before the page stops it. Defaults to ATTACK_TIMEOUT_MS. */
+  attackTimeoutMs?: number;
   /** The "Eavesdropper sees" line for one wire message. Defaults to sender, receiver, size and payload. */
   eavesdropperSees?: (entry: WireEntry) => string;
 }

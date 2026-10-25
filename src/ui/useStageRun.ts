@@ -11,6 +11,9 @@ import type { CompletedRun } from './ResultsPanel';
 
 export type RunStatus = 'idle' | 'running' | 'done' | 'cancelled' | 'error';
 
+/** An attack that has not finished by then is stopped and reported, so the page never hangs. */
+export const ATTACK_TIMEOUT_MS = 60_000;
+
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -200,8 +203,19 @@ export function useStageRun(stage: StageDefinition) {
     setAttackStatus('running');
     setAttackOutcome(null);
     setAttackError(null);
+    const limitMs = stage.attackTimeoutMs ?? ATTACK_TIMEOUT_MS;
+    let timedOut = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        const error = new Error(`Attack timed out after ${Math.round(limitMs / 1000)} s and was stopped.`);
+        controller.abort(error);
+        reject(error);
+      }, limitMs);
+    });
     try {
-      const outcome = await stage.runAttack({
+      const attack = stage.runAttack({
         scenario,
         field,
         epsilon,
@@ -210,6 +224,8 @@ export function useStageRun(stage: StageDefinition) {
         onMessage: (entry) => live() && setWire((w) => [...w, entry]),
         onProgress: () => {},
       });
+      // An attack that ignores the abort signal still cannot keep the page waiting.
+      const outcome = await Promise.race([attack, deadline]);
       if (!live()) return;
       setAttackOutcome(outcome);
       setAttackStatus('done');
@@ -221,8 +237,10 @@ export function useStageRun(stage: StageDefinition) {
       });
     } catch (e) {
       if (!live()) return;
-      setAttackStatus(controller.signal.aborted ? 'cancelled' : 'error');
+      setAttackStatus(controller.signal.aborted && !timedOut ? 'cancelled' : 'error');
       setAttackError(message(e));
+    } finally {
+      clearTimeout(timer);
     }
   }, [attackRun, scenario, field, stage, wire, epsilon]);
 

@@ -6,6 +6,7 @@ import { expectedQuerierResult } from '../protocol/screening';
 import { STAGES, type AttackOutcome, type StageDefinition } from '../stages';
 import { resetSessionForTests, sessionState } from './session';
 import { StagePage } from './StagePage';
+import { ATTACK_TIMEOUT_MS } from './useStageRun';
 import { SummaryPage } from './SummaryPage';
 
 // The attacker panel as UI: buttons, states, displayed numbers and the summary row.
@@ -145,5 +146,54 @@ describe('attacker panel', () => {
 
     render(<SummaryPage />);
     expect(screen.getByTestId('summary-psi-attack')).toHaveTextContent('3 of 4 recovered (75%)');
+  });
+});
+
+describe('attacker panel never hangs', () => {
+  it('a_hanging_attack_times_out_with_a_visible_error', async () => {
+    let sawAbort = false;
+    const hanging: NonNullable<StageDefinition['runAttack']> = (ctx) =>
+      new Promise<AttackOutcome>(() => {
+        ctx.signal.addEventListener('abort', () => (sawAbort = true));
+      });
+    render(<StagePage stage={{ ...psiStage, runProtocol, runAttack: hanging, attackTimeoutMs: 200 }} />);
+    await userEvent.click(screen.getByTestId('run-attack'));
+    expect(screen.getByTestId('attack-status')).toHaveTextContent('Attacking…');
+
+    await waitFor(() => expect(screen.getByTestId('attack-status')).toHaveAttribute('data-status', 'error'));
+    expect(screen.getByTestId('attack-status')).toHaveTextContent(
+      'Attack timed out after 0 s and was stopped.',
+    );
+    // The attack was told to stop, and the buttons work again.
+    expect(sawAbort).toBe(true);
+    expect(screen.getByTestId('run-attack')).toBeEnabled();
+  });
+
+  it('can_run_again_after_a_timeout', async () => {
+    let calls = 0;
+    const firstHangsThenWorks: NonNullable<StageDefinition['runAttack']> = () =>
+      ++calls === 1 ? new Promise<AttackOutcome>(() => {}) : Promise.resolve(outcome(score(2, 2, 0)));
+    render(
+      <StagePage
+        stage={{ ...psiStage, runProtocol, runAttack: firstHangsThenWorks, attackTimeoutMs: 150 }}
+      />,
+    );
+    await userEvent.click(screen.getByTestId('run-attack'));
+    await waitFor(() => expect(screen.getByTestId('attack-status')).toHaveAttribute('data-status', 'error'));
+    await userEvent.click(screen.getByTestId('run-attack'));
+    expect(await screen.findByTestId('attack-summary')).toHaveTextContent('recovered 2 of the 4 entries');
+  });
+
+  it('a_normal_attack_finishes_before_the_limit_and_clears_it', async () => {
+    renderStage(async () => outcome(score(3, 1, 1)));
+    await userEvent.click(screen.getByTestId('run-attack'));
+    await screen.findByTestId('attack-score');
+    // Past where a leftover timer would fire; the result must stand.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.getByTestId('attack-status')).toHaveAttribute('data-status', 'done');
+  });
+
+  it('default_limit_is_one_minute', () => {
+    expect(ATTACK_TIMEOUT_MS).toBe(60_000);
   });
 });

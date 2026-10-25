@@ -24,6 +24,20 @@ describe('StagePage', () => {
     expect(screen.getByTestId('attack-score')).toHaveTextContent('eavesdropper');
   });
 
+  it('run_attack_resolves_and_exits_running_state', async () => {
+    const hashingStage = STAGES.find((s) => s.id === 'hashing')!;
+    render(<StagePage stage={hashingStage} />);
+
+    await userEvent.click(screen.getByTestId('run-attack'));
+
+    await waitFor(() => expect(screen.getByTestId('attack-status')).toHaveAttribute('data-status', 'done'), {
+      timeout: 20_000,
+    });
+    expect(screen.getByTestId('run-attack')).toBeEnabled();
+    expect(screen.getByTestId('attack-score')).toBeInTheDocument();
+    expect(screen.getByTestId('attack-status')).not.toHaveTextContent('Attacking…');
+  });
+
   it('attack_not_built_disables_attack_controls', () => {
     render(<StagePage stage={{ ...psiStage, runAttack: undefined }} />);
     expect(screen.getByTestId('attack-not-built')).toBeInTheDocument();
