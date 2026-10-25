@@ -4,7 +4,7 @@ import type { PresetId } from './data/presets';
 import type { Scenario } from './data/scenario';
 import type { QuerierResult } from './protocol/screening';
 import type { Progress, WireEntry } from './protocol/types';
-import { runMultiPsiAttack, runPsiAttack } from './ui/attackRunners';
+import { runHashingAttack, runMultiPsiAttack, runPlaintextAttack, runPsiAttack } from './ui/attackRunners';
 import { dpRisk } from './ui/explainers/dp-risk';
 import { hashing } from './ui/explainers/hashing';
 import { multiPsi } from './ui/explainers/multi-psi';
@@ -78,6 +78,7 @@ export const STAGES: readonly StageDefinition[] = [
     defaultPreset: 'portfolio',
     defaultFraction: 1,
     runProtocol: runAgainstAllHolders('plaintext'),
+    runAttack: runPlaintextAttack,
     eavesdropperSees: () => 'Every identifier in the message, readable as is.',
   },
   {
@@ -89,6 +90,7 @@ export const STAGES: readonly StageDefinition[] = [
     defaultPreset: 'portfolio',
     defaultFraction: 1,
     runProtocol: runAgainstAllHolders('hashing'),
+    runAttack: runHashingAttack,
   },
   {
     id: 'psi',

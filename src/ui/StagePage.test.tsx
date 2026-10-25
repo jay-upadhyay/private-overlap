@@ -15,6 +15,15 @@ describe('StagePage', () => {
     expect(screen.getByTestId('run-status')).toHaveTextContent('This stage has no protocol yet.');
   });
 
+  it('plaintext_attack_is_live_and_exact', async () => {
+    const plaintextStage = STAGES.find((s) => s.id === 'plaintext')!;
+    render(<StagePage stage={plaintextStage} />);
+    await userEvent.click(screen.getByTestId('run-attack'));
+    await waitFor(() => expect(screen.getByTestId('attack-score')).toHaveTextContent('Recall100%'));
+    expect(screen.getByTestId('attack-score')).toHaveTextContent('Precision100%');
+    expect(screen.getByTestId('attack-score')).toHaveTextContent('eavesdropper');
+  });
+
   it('attack_not_built_disables_attack_controls', () => {
     render(<StagePage stage={{ ...psiStage, runAttack: undefined }} />);
     expect(screen.getByTestId('attack-not-built')).toBeInTheDocument();

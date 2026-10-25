@@ -31,9 +31,10 @@ describe('explainers', () => {
     ]);
   });
 
-  it('psi_stages_have_live_attack_runners', () => {
-    expect(STAGES.find((s) => s.id === 'psi')?.runAttack).toEqual(expect.any(Function));
-    expect(STAGES.find((s) => s.id === 'multi-psi')?.runAttack).toEqual(expect.any(Function));
+  it('stages_0_to_3_have_live_attack_runners', () => {
+    for (const stageId of ['plaintext', 'hashing', 'psi', 'multi-psi']) {
+      expect(STAGES.find((s) => s.id === stageId)?.runAttack).toEqual(expect.any(Function));
+    }
   });
 
   it('steps_reference_real_controls', () => {
